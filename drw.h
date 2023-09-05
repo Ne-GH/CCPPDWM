@@ -1,5 +1,5 @@
 /* See LICENSE file for copyright and license details. */
-
+// 鼠标
 struct Cur{
 	Cursor cursor;
 };
@@ -14,8 +14,11 @@ struct Fnt {
 };
 
 enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
+
+// 颜色
 typedef XftColor Clr;
 
+// 绘图上下文
 struct Drw{
 	unsigned int w, h;
 	Display *dpy;

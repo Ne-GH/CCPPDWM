@@ -194,12 +194,22 @@ drw_fontset_free(Fnt *font)
 	}
 }
 
-void
-drw_clr_create(Drw *drw, Clr *dest, const char *clrname)
-{
+/*******************************************************************************
+ * 根据颜色名称或者颜色编码创建颜色
+ * 参数1：绘图上下文
+ * 参数2：存储创建的颜色
+ * 参数3：字符串，创建的颜色的名称或者16进制编码
+*******************************************************************************/
+void drw_clr_create(Drw *drw, Clr *dest, const char *clrname) {
 	if (!drw || !dest || !clrname)
 		return;
-
+    // 创建颜色
+    // 参数：
+    // 与x服务器的连接
+    // 视觉信息,DefaultVisual(),获取默认的视觉信息
+    // 颜色映射,DefaultColormap()，获取默认的颜色映射
+    // 创建的颜色名称或者16进制编码
+    // 存储创建颜色的地址
 	if (!XftColorAllocName(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
 	                       DefaultColormap(drw->dpy, drw->screen),
 	                       clrname, dest))
@@ -208,17 +218,21 @@ drw_clr_create(Drw *drw, Clr *dest, const char *clrname)
 
 /* Wrapper to create color schemes. The caller has to call free(3) on the
  * returned color scheme when done using it. */
-Clr *
-drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount)
-{
-	size_t i;
+/*******************************************************************************
+ * 创建颜色方案
+ * 参数1：绘图上下文
+ * 参数2：字符串数组，每个字符串都是颜色的16进制代码或名称
+ * 参数3：颜色的数量
+ * 返回：创建的颜色方案
+*******************************************************************************/
+Clr* drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount) {
 	Clr *ret;
-
 	/* need at least two colors for a scheme */
-	if (!drw || !clrnames || clrcount < 2 || !(ret = (Clr *)ecalloc(clrcount, sizeof(XftColor))))
+    // 一个方案至少需要两个颜色
+	if (!drw || !clrnames || clrcount < 2 || !(ret = (Clr *)ecalloc(clrcount, sizeof(Clr))))
 		return NULL;
 
-	for (i = 0; i < clrcount; i++)
+	for (int i = 0; i < clrcount; i++)
 		drw_clr_create(drw, &ret[i], clrnames[i]);
 	return ret;
 }
@@ -440,16 +454,17 @@ drw_font_getexts(Fnt *font, const char *text, unsigned int len, unsigned int *w,
 		*h = font->h;
 }
 
-Cur *
-drw_cur_create(Drw *drw, int shape)
-{
+/*******************************************************************************
+ * 创建鼠标
+ * 参数1：绘图上下文
+ * 参数2：形状
+*******************************************************************************/
+Cur* drw_cur_create(Drw *drw, int shape) {
 	Cur *cur;
 
 	if (!drw || !(cur = (Cur *)ecalloc(1, sizeof(Cur))))
 		return NULL;
-
 	cur->cursor = XCreateFontCursor(drw->dpy, shape);
-
 	return cur;
 }
 

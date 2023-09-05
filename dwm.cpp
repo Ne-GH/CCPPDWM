@@ -268,6 +268,7 @@ static Cur *cursor[CurLast];
 static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
+// 监视器链表
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
@@ -978,10 +979,16 @@ incnmaster(const Arg *arg)
 	arrange(selmon);
 }
 
+
+/*******************************************************************************
+ * 检查Xinerama扩展提供的屏幕信息是否表示唯一的屏幕几何
+ * 参数1：存储已知的屏幕几何信息
+ * 参数2：已知唯一屏幕信息数组unique的长度
+ * 参数3：要检查的新的屏幕几何信息
+ * 返回值：如果info和unique中的任何一个屏幕信息相同则返回0,否则返回1
+O*******************************************************************************/
 #ifdef XINERAMA
-static int
-isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo *info)
-{
+static int isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo *info) {
 	while (n--)
 		if (unique[n].x_org == info->x_org && unique[n].y_org == info->y_org
 		&& unique[n].width == info->width && unique[n].height == info->height)
@@ -1530,12 +1537,12 @@ setmfact(const Arg *arg)
 	arrange(selmon);
 }
 
-void
-setup(void)
-{
+/*******************************************************************************
+ * 设置 TODO
+*******************************************************************************/
+void setup(void) {
     // 设置窗口属性
 	XSetWindowAttributes wa;
-	Atom utf8string;
 
     // 清理所有僵尸进程
 	sigchld(0);
@@ -1555,32 +1562,59 @@ setup(void)
     // 创建字体合集
 	if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
 		Die("no fonts could be loaded.");
+
+    // 字体的高
 	lrpad = drw->fonts->h;
+    // 边的高度(bar height),能够容纳字体
 	bh = drw->fonts->h + 2;
+
+    // 更新几何
 	updategeom();
+
 	/* init atoms */
-	utf8string = XInternAtom(dpy, "UTF8_STRING", False);
+    // 获取一个名为UTF8_STRING的Atom存储在utf8string中,False 表示不创建新的Atom,只在x服务器中查找现有的Atom
+	Atom utf8string = XInternAtom(dpy, "UTF8_STRING", False);
+    // 窗口管理器协议
 	wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
+    // 窗口关闭请求协议
 	wmatom[WMDelete] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    // 窗口状态协议
 	wmatom[WMState] = XInternAtom(dpy, "WM_STATE", False);
+    // 获取焦点协议
 	wmatom[WMTakeFocus] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
-	netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+    // 窗口管理器支持的扩展协议
 	netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
+    // 窗口的名称
 	netatom[NetWMName] = XInternAtom(dpy, "_NET_WM_NAME", False);
+    // 窗口状态扩展协议，用于管理窗口的状态
 	netatom[NetWMState] = XInternAtom(dpy, "_NET_WM_STATE", False);
+    // 用于检查窗口管理器是否运行
 	netatom[NetWMCheck] = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
+    // 全屏窗口状态
 	netatom[NetWMFullscreen] = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+    // 当前活动的窗口
+    netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+    // 窗口类型
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+    // 对话框窗口类型
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+    // 获取当前运行的客户端应用程序列表
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-	/* init cursors */
+
+    // 初始化鼠标
+    // 普通鼠标
 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
+    // 调整窗口大小的鼠标
 	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
+    // 移动窗口的鼠标
 	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+
 	/* init appearance */
+    // 初始化外观
 	scheme = (Clr **)ecalloc(LENGTH(colors), sizeof(Clr *));
 	for (int i = 0; i < LENGTH(colors); i++)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
+
 	/* init bars */
 	updatebars();
 	updatestatus();
@@ -1879,31 +1913,44 @@ updateclientlist()
 				(unsigned char *) &(c->win), 1);
 }
 
-int
-updategeom(void)
-{
+/*******************************************************************************
+ * 更新几何 TODO
+*******************************************************************************/
+int updategeom(void) {
+    // 是否需要刷新布局信息,0表示没有需要更新的布局信息
 	int dirty = 0;
 
+// 如果使用Xinerama扩展
 #ifdef XINERAMA
+    // 如果Xinerama扩展可用
 	if (XineramaIsActive(dpy)) {
 		int i, j, n, nn;
 		Client *c;
 		Monitor *m;
+
+        // 获取当前Xinerama屏幕信息存储在info中,共有nn个
 		XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
 		XineramaScreenInfo *unique = NULL;
 
-		for (n = 0, m = mons; m; m = m->next, n++);
+		for (n = 0, m = mons; m; m = m->next, n++)
+            ;
+
 		/* only consider unique geometries as separate screens */
+        // 检查是否有相同的屏幕几何信息，将唯一的屏幕信息存储在unique中
 		unique = (XineramaScreenInfo *)ecalloc(nn, sizeof(XineramaScreenInfo));
 		for (i = 0, j = 0; i < nn; i++)
+            // 如果有相同的信息
 			if (isuniquegeom(unique, j, &info[i]))
 				memcpy(&unique[j++], &info[i], sizeof(XineramaScreenInfo));
 		XFree(info);
-		nn = j;
 
+        // 新的监视器数量
+		nn = j;
 		/* new monitors if nn > n */
+        // 如果新的监视器数量大于当前监视器数量
 		for (i = n; i < nn; i++) {
-			for (m = mons; m && m->next; m = m->next);
+			for (m = mons; m && m->next; m = m->next)
+                ;
 			if (m)
 				m->next = createmon();
 			else
@@ -1941,6 +1988,7 @@ updategeom(void)
 	} else
 #endif /* XINERAMA */
 	{ /* default monitor setup */
+        // 默认的显示器设置
 		if (!mons)
 			mons = createmon();
 		if (mons->mw != sw || mons->mh != sh) {
