@@ -30,9 +30,10 @@ LIBS = -L${X11LIB} -lX11 ${XINERAMALIBS} ${FREETYPELIBS}
 
 # flags
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
+# CPPFLAGS = -std=c++20 -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
 #CFLAGS   = -g -std=c99 -pedantic -Wall -O0 ${INCS} ${CPPFLAGS}
-CFLAGS   = -std=c99 -pedantic -Wall -Wno-deprecated-declarations -Os ${INCS} ${CPPFLAGS}
-# CFLAGS   = -w -pedantic -Wno-deprecated-declarations -Os ${INCS} ${CPPFLAGS}
+# CFLAGS   = -std=c99 -pedantic -Wall -Wno-deprecated-declarations -Os ${INCS} ${CPPFLAGS}
+CFLAGS   = -w -pedantic -Wno-deprecated-declarations -Os ${INCS} ${CPPFLAGS}
 LDFLAGS  = ${LIBS}
 
 # Solaris
@@ -40,14 +41,14 @@ LDFLAGS  = ${LIBS}
 #LDFLAGS = ${LIBS}
 
 # compiler and linker
-CC = cc
+CC = g++
 
 
 # 源文件有drw.c dwm.c util.c
-SRC = drw.c dwm.c util.c
+SRC = drw.cpp dwm.cpp util.cpp
 
 # 将SCR中所有的.c后缀改为.o
-OBJ = ${SRC:.c=.o}
+OBJ = ${SRC:.cpp=.o}
 
 all: options dwm
 
@@ -59,8 +60,10 @@ options:
 	@echo "CC       = ${CC}"
 
     # 编译.c文件为.o
-.c.o:
-    # -c 只编译不链接        # &< 表示第一个依赖，即源文件的名称        ${CC} -c ${CFLAGS} $<
+.cpp.o:
+    # -c 只编译不链接
+    # &< 表示第一个依赖，即源文件的名称
+	${CC} -c ${CFLAGS} $<
 
 # config.h 是 OBJ的依赖
 ${OBJ}: config.h

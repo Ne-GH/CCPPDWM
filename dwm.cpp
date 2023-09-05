@@ -133,7 +133,7 @@ struct Monitor {
 };
 
 typedef struct {
-	const char *class;
+	const char *_class;
 	const char *instance;
 	const char *title;
 	unsigned int tags;
@@ -245,20 +245,41 @@ static int lrpad;            /* sum of left and right padding for text */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent]) (XEvent *) = {
-	[ButtonPress] = buttonpress,
-	[ClientMessage] = clientmessage,
-	[ConfigureRequest] = configurerequest,
-	[ConfigureNotify] = configurenotify,
-	[DestroyNotify] = destroynotify,
-	[EnterNotify] = enternotify,
-	[Expose] = expose,
-	[FocusIn] = focusin,
-	[KeyPress] = keypress,
-	[MappingNotify] = mappingnotify,
-	[MapRequest] = maprequest,
-	[MotionNotify] = motionnotify,
-	[PropertyNotify] = propertynotify,
-	[UnmapNotify] = unmapnotify
+    [0] = nullptr,
+    [1] = nullptr,
+    [KeyPress] = keypress,//2
+    [3] = nullptr,
+    [ButtonPress] = buttonpress,//4
+    [5] = nullptr,
+    [MotionNotify] = motionnotify,//6
+    [EnterNotify] = enternotify,//7
+    [8] = nullptr,
+    [FocusIn] = focusin,//9
+    [10] = nullptr,
+    [11] = nullptr,
+    [Expose] = expose,//12
+    [13] = nullptr,
+    [14] = nullptr,
+    [15] = nullptr,
+    [16] = nullptr,
+    [DestroyNotify] = destroynotify,//17
+    [UnmapNotify] = unmapnotify,//18
+    [19] = nullptr,
+    [MapRequest] = maprequest,//20
+    [21] = nullptr,
+    [ConfigureNotify] = configurenotify,//22
+    [ConfigureRequest] = configurerequest,//23
+    [24] = nullptr,
+    [25] = nullptr,
+    [26] = nullptr,
+    [27] = nullptr,
+    [PropertyNotify] = propertynotify,//28
+    [29] = nullptr,
+    [30] = nullptr,
+    [31] = nullptr,
+    [32] = nullptr,
+    [ClientMessage] = clientmessage,//33
+    [MappingNotify] = mappingnotify,//34
 };
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
@@ -279,7 +300,7 @@ struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 void
 applyrules(Client *c)
 {
-	const char *class, *instance;
+	const char *_class, *instance;
 	unsigned int i;
 	const Rule *r;
 	Monitor *m;
@@ -289,13 +310,13 @@ applyrules(Client *c)
 	c->isfloating = 0;
 	c->tags = 0;
 	XGetClassHint(dpy, c->win, &ch);
-	class    = ch.res_class ? ch.res_class : broken;
+	_class    = ch.res_class ? ch.res_class : broken;
 	instance = ch.res_name  ? ch.res_name  : broken;
 
 	for (i = 0; i < LENGTH(rules); i++) {
 		r = &rules[i];
 		if ((!r->title || strstr(c->name, r->title))
-		&& (!r->class || strstr(class, r->class))
+		&& (!r->_class || strstr(_class, r->_class))
 		&& (!r->instance || strstr(instance, r->instance)))
 		{
 			c->isfloating = r->isfloating;
@@ -636,7 +657,7 @@ createmon(void)
 {
 	Monitor *m;
 
-	m = ecalloc(1, sizeof(Monitor));
+	m = (Monitor *)ecalloc(1, sizeof(Monitor));
 	m->tagset[0] = m->tagset[1] = 1;
 	m->mfact = mfact;
 	m->nmaster = nmaster;
@@ -1026,7 +1047,7 @@ manage(Window w, XWindowAttributes *wa)
 	Window trans = None;
 	XWindowChanges wc;
 
-	c = ecalloc(1, sizeof(Client));
+	c = (Client *)ecalloc(1, sizeof(Client));
 	c->win = w;
 	/* geometry */
 	c->x = c->oldx = wa->x;
@@ -1568,7 +1589,7 @@ setup(void)
 	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
 	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
 	/* init appearance */
-	scheme = ecalloc(LENGTH(colors), sizeof(Clr *));
+	scheme = (Clr **)ecalloc(LENGTH(colors), sizeof(Clr *));
 	for (i = 0; i < LENGTH(colors); i++)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
 	/* init bars */
@@ -1802,9 +1823,23 @@ updatebars(void)
 {
 	Monitor *m;
 	XSetWindowAttributes wa = {
-		.override_redirect = True,
-		.background_pixmap = ParentRelative,
-		.event_mask = ButtonPressMask|ExposureMask
+        .background_pixmap = ParentRelative,
+//        unsigned long background_pixel;	/* background pixel */
+//        Pixmap border_pixmap;	/* border of the window */
+//        unsigned long border_pixel;	/* border pixel value */
+//        int bit_gravity;		/* one of bit gravity values */
+//        int win_gravity;		/* one of the window gravity values */
+//        int backing_store;		/* NotUseful, WhenMapped, Always */
+//        unsigned long backing_planes;/* planes to be preserved if possible */
+//        unsigned long backing_pixel;/* value to use in restoring planes */
+//        Bool save_under;		/* should bits under be saved? (popups) */
+//        long event_mask;		/* set of events that should be saved */
+        .event_mask = ButtonPressMask|ExposureMask,
+//        long do_not_propagate_mask;	/* set of events that should not propagate */
+//        Bool override_redirect;	/* boolean value for override-redirect */
+        .override_redirect = True
+//        Colormap colormap;		/* color map to be associated with window */
+//        Cursor cursor;		/* cursor to be displayed (or None) */
 	};
 	XClassHint ch = {"dwm", "dwm"};
 	for (m = mons; m; m = m->next) {
@@ -1861,7 +1896,7 @@ updategeom(void)
 
 		for (n = 0, m = mons; m; m = m->next, n++);
 		/* only consider unique geometries as separate screens */
-		unique = ecalloc(nn, sizeof(XineramaScreenInfo));
+		unique = (XineramaScreenInfo *)ecalloc(nn, sizeof(XineramaScreenInfo));
 		for (i = 0, j = 0; i < nn; i++)
 			if (isuniquegeom(unique, j, &info[i]))
 				memcpy(&unique[j++], &info[i], sizeof(XineramaScreenInfo));
