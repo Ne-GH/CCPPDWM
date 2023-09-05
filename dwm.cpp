@@ -113,14 +113,14 @@ struct Monitor {
 	const Layout *lt[2];
 };
 
-typedef struct {
+struct Rule{
 	const char *_class;
 	const char *instance;
 	const char *title;
 	unsigned int tags;
 	int isfloating;
 	int monitor;
-} Rule;
+};
 
 /* function declarations */
 static void applyrules(Client *c);
@@ -226,7 +226,6 @@ static int lrpad;            /* sum of left and right padding for text */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent]) (XEvent *) = {
-
     [0] = nullptr,
     [1] = nullptr,
     [KeyPress] = keypress,//2
@@ -262,7 +261,6 @@ static void (*handler[LASTEvent]) (XEvent *) = {
     [32] = nullptr,
     [ClientMessage] = clientmessage,//33
     [MappingNotify] = mappingnotify,//34
-
 };
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
@@ -462,9 +460,10 @@ buttonpress(XEvent *e)
 			buttons[i].func(click == ClkTagBar && buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
 }
 
-void
-checkotherwm(void)
-{
+/*******************************************************************************
+ * 检查是否有其他窗口管理器运行
+*******************************************************************************/
+void checkotherwm(void) {
 	xerrorxlib = XSetErrorHandler(xerrorstart);
 	/* this causes an error if some other window manager is running */
 	XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
@@ -1534,7 +1533,6 @@ setmfact(const Arg *arg)
 void
 setup(void)
 {
-	int i;
 	XSetWindowAttributes wa;
 	Atom utf8string;
 
@@ -1573,7 +1571,7 @@ setup(void)
 	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
 	/* init appearance */
 	scheme = (Clr **)ecalloc(LENGTH(colors), sizeof(Clr *));
-	for (i = 0; i < LENGTH(colors); i++)
+	for (int i = 0; i < LENGTH(colors); i++)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
 	/* init bars */
 	updatebars();
