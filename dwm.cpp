@@ -92,25 +92,38 @@ typedef struct {
 	void (*arrange)(Monitor *);
 } Layout;
 
+
 struct Monitor {
-	char ltsymbol[16];
-	float mfact;
-	int nmaster;
-	int num;
-	int by;               /* bar geometry */
-	int mx, my, mw, mh;   /* screen size */
+	char ltsymbol[16];//一个字符串数组，用于存储监视器的布局符号（layout symbol）。这通常是一个用于表示当前布局模式的短字符串，例如 "T" 表示平铺布局，"M" 表示主区域布局，等等。
+	float mfact;//一个浮点数，表示主区域的宽度与整个屏幕宽度之比。通常用于控制平铺布局中主区域的大小。
+	int nmaster;//一个整数，表示主区域中主客户端的数量，通常用于平铺布局。
+	int num;//一个整数，表示监视器的编号或索引。
+	int by; //一个整数，表示状态栏（bar）的垂直位置，通常是状态栏距离屏幕顶部或底部的距离。              /* bar geometry */
+	int mx, my, mw, mh;   /* screen size
+ *  mx, my, mw, mh：一组整数，表示监视器的屏幕位置和尺寸。
+        mx 和 my 表示监视器的左上角坐标。
+        mw 表示监视器的宽度。
+        mh 表示监视器的高度。*/
 	int wx, wy, ww, wh;   /* window area  */
-	unsigned int seltags;
-	unsigned int sellt;
-	unsigned int tagset[2];
-	int showbar;
-	int topbar;
-	Client *clients;
-	Client *sel;
-	Client *stack;
-	Monitor *next;
-	Window barwin;
-	const Layout *lt[2];
+    /*
+     *  wx, wy, ww, wh：一组整数，表示监视器上的窗口区域。
+        wx 和 wy 表示窗口区域的左上角坐标。
+        ww 表示窗口区域的宽度。
+        wh 表示窗口区域的高度。 wx, wy, ww, wh：一组整数，表示监视器上的窗口区域。
+        wx 和 wy 表示窗口区域的左上角坐标。
+        ww 表示窗口区域的宽度。
+        wh 表示窗口区域的高度。*/
+	unsigned int seltags;//一个无符号整数，表示当前选定的标签集。
+	unsigned int sellt; //一个无符号整数，表示当前选定的布局模式。
+	unsigned int tagset[2];//一个整数数组，表示两个标签集，通常用于在不同的工作区之间切换。
+	int showbar;//一个整数，表示是否显示状态栏。通常用于控制状态栏的可见性。
+	int topbar; //一个整数，表示状态栏是否位于屏幕的顶部（1）或底部（0）。
+	Client *clients;    // 一个指向客户端窗口的链表，表示当前监视器上的所有客户端窗口。
+	Client *sel;    // 一个指向当前选定的客户端窗口的指针。
+	Client *stack; //一个指向客户端窗口堆栈的链表，通常用于管理窗口的层叠顺序。
+	Monitor *next; // 一个指向下一个监视器的指针，通常用于连接多个监视器。
+	Window barwin; // 一个窗口（Window）类型的变量，表示状态栏的窗口句柄。
+	const Layout *lt[2]; // 一个指向布局（Layout）结构体的数组，通常包含两种不同的布局模式，例如平铺布局和主区域布局。
 };
 
 struct Rule{
@@ -268,8 +281,9 @@ static Cur *cursor[CurLast];
 static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
-// 监视器链表
+// mons监视器链表,selmon当前选中的监视器
 static Monitor *mons, *selmon;
+// root根窗口，wmcheckwin辅助窗口
 static Window root, wmcheckwin;
 
 /* configuration, allows nested code to access above variables */
@@ -700,6 +714,10 @@ dirtomon(int dir)
 	return m;
 }
 
+/*******************************************************************************
+ * 重绘特定监视器的状态栏
+ * TODO
+*******************************************************************************/
 void
 drawbar(Monitor *m)
 {
@@ -791,6 +809,10 @@ expose(XEvent *e)
 		drawbar(m);
 }
 
+/*******************************************************************************
+ * 设置窗口管理器的焦点
+ * TODO
+*******************************************************************************/
 void
 focus(Client *c)
 {
@@ -954,6 +976,10 @@ grabbuttons(Client *c, int focused)
 	}
 }
 
+/*******************************************************************************
+ * 捕获键盘快捷键的输入事件，以便窗口管理器可以响应用户的键盘操作。
+ * TODO
+*******************************************************************************/
 void
 grabkeys(void)
 {
@@ -1610,34 +1636,61 @@ void setup(void) {
 	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
 
 	/* init appearance */
-    // 初始化外观
+    // 初始化外观,(创建颜色集合)
 	scheme = (Clr **)ecalloc(LENGTH(colors), sizeof(Clr *));
 	for (int i = 0; i < LENGTH(colors); i++)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
 
 	/* init bars */
+    // 更新状态栏
 	updatebars();
+
+    // 更新状态栏的文本信息
 	updatestatus();
 	/* supporting window for NetWMCheck */
+    // NetWMCheck的支持窗口
+    // 创建一个大小为 1x1 像素，位置在坐标 (0, 0)，不可见的窗口
 	wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
+    // 窗口的属性设置为NET_WM_CHECK类型，值设置为wmcheckwin，这是为了支持EWMH
 	XChangeProperty(dpy, wmcheckwin, netatom[NetWMCheck], XA_WINDOW, 32,
 		PropModeReplace, (unsigned char *) &wmcheckwin, 1);
+    // 窗口的属性设置为 _NET_WM_NAME 类型，并将其值设置为 "dwm"，表示窗口管理器的名称。
 	XChangeProperty(dpy, wmcheckwin, netatom[NetWMName], utf8string, 8,
 		PropModeReplace, (unsigned char *) "dwm", 3);
+    //将窗口 wmcheckwin 的信息存储为一个属性，属性的类型是 _NET_WM_CHECK，属性的数据类型是窗口类型（XA_WINDOW），并且将其完全替换根窗口的相应属性。通常，这样的属性用于与窗口管理器通信，以支持特定的窗口管理功能或协议，例如 EWMH。
 	XChangeProperty(dpy, root, netatom[NetWMCheck], XA_WINDOW, 32,
 		PropModeReplace, (unsigned char *) &wmcheckwin, 1);
 	/* EWMH support per view */
+//     将根窗口的属性设置为 _NET_SUPPORTED 类型，其值是一个包含各种 Atom 类型的数组，以表明窗口管理器支持的 EWMH 特性。
 	XChangeProperty(dpy, root, netatom[NetSupported], XA_ATOM, 32,
 		PropModeReplace, (unsigned char *) netatom, NetLast);
-	XDeleteProperty(dpy, root, netatom[NetClientList]);
+    // 删除根窗口的 _NET_CLIENT_LIST 属性，以便窗口管理器自行维护这个属性。
+    XDeleteProperty(dpy, root, netatom[NetClientList]);
 	/* select events */
+    //为根窗口设置事件监听和光标属性：
+    //
+    //    设置光标为正常状态下的光标形状。
+    //    设置事件掩码，以便根窗口能够监听并处理多种事件，包括窗口结构变化、鼠标按钮按下、鼠标指针移动、鼠标进入和离开窗口、窗口属性变化等。
+    //    使用 XChangeWindowAttributes 函数和 XSelectInput 函数分别为根窗口设置事件属性和事件监听。
 	wa.cursor = cursor[CurNormal]->cursor;
+    /*SubstructureRedirectMask：表示子窗口重定向事件，通常用于捕获窗口创建和销毁事件。
+    SubstructureNotifyMask：表示子窗口通知事件，通常用于捕获子窗口的改变事件，如改变大小或移动。
+    ButtonPressMask：表示鼠标按钮按下事件，用于捕获鼠标按键的点击事件。
+    PointerMotionMask：表示鼠标指针移动事件，用于捕获鼠标指针的移动。
+    EnterWindowMask：表示鼠标指针进入窗口事件。
+    LeaveWindowMask：表示鼠标指针离开窗口事件。
+    StructureNotifyMask：表示窗口结构变化事件，用于捕获窗口的改变，如创建、销毁、映射和取消映射。
+    PropertyChangeMask：表示属性变化事件，用于捕获窗口属性的改变。*/
 	wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask
 		|ButtonPressMask|PointerMotionMask|EnterWindowMask
 		|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
+    // 更改根窗口的属性,参数3表示要更改的属性标志，包括事件掩码和光标
 	XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
+    // 为根窗口（root）设置事件监听
 	XSelectInput(dpy, root, wa.event_mask);
+    //捕获键盘快捷键的输入事件，以便窗口管理器可以响应用户的键盘操作。
 	grabkeys();
+    //置窗口管理器的焦点
 	focus(NULL);
 }
 
@@ -1850,11 +1903,14 @@ unmapnotify(XEvent *e)
 	}
 }
 
-void
-updatebars(void)
-{
+/*******************************************************************************
+ * 更新状态栏,为每个监视器创建自己独立的状态栏窗口
+*******************************************************************************/
+void updatebars(void) {
+    // 用于遍历所有监视器
 	Monitor *m;
 	XSetWindowAttributes wa = {
+        // 与父窗口共享背景
         .background_pixmap = ParentRelative,
 //        unsigned long background_pixel;	/* background pixel */
 //        Pixmap border_pixmap;	/* border of the window */
@@ -1866,22 +1922,32 @@ updatebars(void)
 //        unsigned long backing_pixel;/* value to use in restoring planes */
 //        Bool save_under;		/* should bits under be saved? (popups) */
 //        long event_mask;		/* set of events that should be saved */
+        // 窗口关注的事件为 按钮按下事件和曝光事件
         .event_mask = ButtonPressMask|ExposureMask,
 //        long do_not_propagate_mask;	/* set of events that should not propagate */
 //        Bool override_redirect;	/* boolean value for override-redirect */
+        // 状态栏窗口是否应该绕过窗口管理器的默认行为，True表示窗口管理器会将该窗口的控制权交给该窗口背身，不去干预或者管理
         .override_redirect = True
 //        Colormap colormap;		/* color map to be associated with window */
 //        Cursor cursor;		/* cursor to be displayed (or None) */
 	};
+
+    // 设置窗口的类名和实例名
 	XClassHint ch = {"dwm", "dwm"};
+    // 遍历所有的监视器
 	for (m = mons; m; m = m->next) {
+        // 如果监视器的状态栏窗口已经存在，则跳过，不重复创建
 		if (m->barwin)
 			continue;
+        // 创建状态栏，参数包括窗口的位置、大小、深度等信息
 		m->barwin = XCreateWindow(dpy, root, m->wx, m->by, m->ww, bh, 0, DefaultDepth(dpy, screen),
 				CopyFromParent, DefaultVisual(dpy, screen),
 				CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
+        // 为窗口设置光标
 		XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
+        // 将窗口映射到显示中以显示状态栏
 		XMapRaised(dpy, m->barwin);
+        // 使其他程序可以识别设置的窗口的类名和实例名，此处为dwm
 		XSetClassHint(dpy, m->barwin, &ch);
 	}
 }
@@ -2065,11 +2131,15 @@ updatesizehints(Client *c)
 	c->hintsvalid = 1;
 }
 
-void
-updatestatus(void)
-{
+/*******************************************************************************
+ * 更新状态栏上的文本内容
+*******************************************************************************/
+void updatestatus(void) {
+    // 获取root窗口的属性值，将结果存在stext数组中，属性XA_WM_NAME为窗口的名称或者标题
 	if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
+        // 获取成功时使用获取的文本，获取失败默认使用dwm-VERSION
 		strcpy(stext, "dwm-" VERSION);
+    // 传递当前选中的监视器，以便重新绘制状态栏，以显示更新后的文本
 	drawbar(selmon);
 }
 

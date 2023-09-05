@@ -213,17 +213,17 @@ void drw_clr_create(Drw *drw, Clr *dest, const char *clrname) {
 	if (!XftColorAllocName(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
 	                       DefaultColormap(drw->dpy, drw->screen),
 	                       clrname, dest))
-		die("error, cannot allocate color '%s'", clrname);
+        Die("error, cannot allocate color " + std::string(clrname));
 }
 
 /* Wrapper to create color schemes. The caller has to call free(3) on the
  * returned color scheme when done using it. */
 /*******************************************************************************
- * 创建颜色方案
+ * 创建颜色方案(集合)
  * 参数1：绘图上下文
  * 参数2：字符串数组，每个字符串都是颜色的16进制代码或名称
  * 参数3：颜色的数量
- * 返回：创建的颜色方案
+ * 返回：创建的颜色方案(集合)
 *******************************************************************************/
 Clr* drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount) {
 	Clr *ret;
