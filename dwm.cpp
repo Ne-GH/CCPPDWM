@@ -245,6 +245,7 @@ static int lrpad;            /* sum of left and right padding for text */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent]) (XEvent *) = {
+
     [0] = nullptr,
     [1] = nullptr,
     [KeyPress] = keypress,//2
@@ -280,6 +281,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
     [32] = nullptr,
     [ClientMessage] = clientmessage,//33
     [MappingNotify] = mappingnotify,//34
+
 };
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
