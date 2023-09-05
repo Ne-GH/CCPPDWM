@@ -60,18 +60,25 @@ utf8decode(const char *c, long *u, size_t clen)
 	return len;
 }
 
-Drw *
-drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h)
-{
+/*******************************************************************************
+ * 创建绘图上下文
+*******************************************************************************/
+Drw* drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h) {
 	Drw *drw = (Drw *)ecalloc(1, sizeof(Drw));
-
 	drw->dpy = dpy;
 	drw->screen = screen;
 	drw->root = root;
 	drw->w = w;
 	drw->h = h;
+
+    // 创建与绘图上下文关联的像素图，用于绘制图形元素
 	drw->drawable = XCreatePixmap(dpy, root, w, h, DefaultDepth(dpy, screen));
+    // 创建图形上下文,GC包含图形操作的信息，例如线条样式和颜色
 	drw->gc = XCreateGC(dpy, root, 0, NULL);
+
+    // 设置图形上下文的线条属性，线宽、线条样式、端点、连接方式
+    // 参数分别为：
+    // 与X服务器的连接，图形上下文，线条的宽度（像素），线条的样式（实线），线条的端点（平直，不做特殊处理），线条的连接方式（尖角，两条直线连接是锐角）
 	XSetLineAttributes(dpy, drw->gc, 1, LineSolid, CapButt, JoinMiter);
 
 	return drw;
@@ -153,22 +160,29 @@ xfont_free(Fnt *font)
 	free(font);
 }
 
-Fnt*
-drw_fontset_create(Drw* drw, const char *fonts[], size_t fontcount)
-{
-	Fnt *cur, *ret = NULL;
-	size_t i;
+/*******************************************************************************
+ * 创建字体合集
+ * 参数1：绘图上下文
+ * 参数2：字体数组
+ * 参数3：字体数组的长度(字体数量)
+ * 返回值字体合集是一个链表
+*******************************************************************************/
+Fnt* drw_fontset_create(Drw* drw, const char *fonts[], size_t fontcount) {
+    // 当前处理的字体，返回的字体集合
+	Fnt *cur, *ret = nullptr;
 
 	if (!drw || !fonts)
-		return NULL;
+		return nullptr;
 
-	for (i = 1; i <= fontcount; i++) {
+	for (int i = 1; i <= fontcount; i++) {
+        // 创建字体，参数为：绘图上下文，字体名称
 		if ((cur = xfont_create(drw, fonts[fontcount - i], NULL))) {
 			cur->next = ret;
 			ret = cur;
 		}
 	}
-	return (drw->fonts = ret);
+    drw->fonts = ret;
+	return ret;
 }
 
 void

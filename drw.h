@@ -1,21 +1,22 @@
 /* See LICENSE file for copyright and license details. */
 
-typedef struct {
+struct Cur{
 	Cursor cursor;
-} Cur;
+};
 
-typedef struct Fnt {
+// 字体
+struct Fnt {
 	Display *dpy;
 	unsigned int h;
 	XftFont *xfont;
 	FcPattern *pattern;
 	struct Fnt *next;
-} Fnt;
+};
 
 enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
 typedef XftColor Clr;
 
-typedef struct {
+struct Drw{
 	unsigned int w, h;
 	Display *dpy;
 	int screen;
@@ -24,7 +25,7 @@ typedef struct {
 	GC gc;
 	Clr *scheme;
 	Fnt *fonts;
-} Drw;
+};
 
 /* Drawable abstraction */
 Drw *drw_create(Display *dpy, int screen, Window win, unsigned int w, unsigned int h);

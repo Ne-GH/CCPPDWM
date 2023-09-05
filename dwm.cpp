@@ -1533,18 +1533,26 @@ setmfact(const Arg *arg)
 void
 setup(void)
 {
+    // 设置窗口属性
 	XSetWindowAttributes wa;
 	Atom utf8string;
 
-	/* clean up any zombies immediately */
+    // 清理所有僵尸进程
 	sigchld(0);
 
 	/* init screen */
+    // 获取当前屏幕编号
 	screen = DefaultScreen(dpy);
+    // 获取当前屏幕宽度
 	sw = DisplayWidth(dpy, screen);
+    // 获取当前屏幕高度
 	sh = DisplayHeight(dpy, screen);
+    // 获取指定屏幕的根窗口
 	root = RootWindow(dpy, screen);
+
+    // 创建绘图上下文
 	drw = drw_create(dpy, screen, root, sw, sh);
+    // 创建字体合集
 	if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
 		Die("no fonts could be loaded.");
 	lrpad = drw->fonts->h;
@@ -1630,12 +1638,21 @@ showhide(Client *c)
 	}
 }
 
-void
-sigchld(int unused)
-{
+/*******************************************************************************
+ * 安装处理终止进程的 信号处理程序
+*******************************************************************************/
+void sigchld(int unused) {
+    // 安装SIGCHLD信号处理程序(子进程终止或者停止时发出的信号)，将sigchld和SIGCHLD关联起来
+    // 如果返回 SIG_ERR(安装失败),则结束
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
 		Die("can't install SIGCHLD handler:");
-	while (0 < waitpid(-1, NULL, WNOHANG));
+
+    // 等待并处理已经终止的进程
+    // 参数1：等待任何子进程的退出
+    // 参数2：不关心子进程的退出状态
+    // 参数3：非阻塞模式，如果没有子进程退出，waitpid不会阻塞，而是立即返回
+	while (0 < waitpid(-1, NULL, WNOHANG))
+        ;
 }
 
 void
