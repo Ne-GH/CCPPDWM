@@ -2145,16 +2145,19 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
         std::string argv1(argv[1]);
         if (argv1 == "-v") {
-            die("dwm-" VERSION);
+            Die("dwm-" VERSION);
+        }
+        else {
+            Die("usage: dwm [-v]");
         }
     }
     // 有多个参数时，提示只支持参数-v
 	else if (argc != 1)
-		die("usage: dwm [-v]");
+		Die("usage: dwm [-v]");
 	if (!setlocale(LC_CTYPE, "") || !XSupportsLocale())
-		fputs("warning: no locale support\n", stderr);
+        std::cerr << "warning: no locale support" << std::endl;
 	if (!(dpy = XOpenDisplay(NULL)))
-		die("dwm: cannot open display");
+		Die("dwm: cannot open display");
 	checkotherwm();
 	setup();
 #ifdef __OpenBSD__

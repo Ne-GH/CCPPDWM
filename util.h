@@ -6,3 +6,14 @@
 
 void die(const char *fmt, ...);
 void *ecalloc(size_t nmemb, size_t size);
+
+
+#include <iostream>
+/*******************************************************************************
+ * 输出信息并终止程序
+*******************************************************************************/
+template<typename T>
+void Die(T && die_mes) {
+    std::cerr << die_mes << std::endl;
+    exit(1);
+}
