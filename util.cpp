@@ -25,12 +25,15 @@ die(const char *fmt, ...)
 	exit(1);
 }
 
-void *
-ecalloc(size_t nmemb, size_t size)
-{
-	void *p;
-
-	if (!(p = calloc(nmemb, size)))
+/*******************************************************************************
+ * 分配内存并将分配的内存初始化为0，分配的内存大小为"块数 * 每块大小"
+ * 参数1：分配的内存块数
+ * 参数2：分配的内存块的大小
+*******************************************************************************/
+void* ecalloc(size_t nmemb, size_t size) {
+    void *p = calloc(nmemb,size);
+    if (p == nullptr) {
 		die("calloc:");
-	return p;
+    }
+    return p;
 }
