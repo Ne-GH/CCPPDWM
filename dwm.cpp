@@ -48,49 +48,61 @@ enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms *
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
 
-typedef union {
+union Arg{
 	int i;
 	unsigned int ui;
 	float f;
 	const void *v;
-} Arg;
+};
 
-typedef struct {
+struct Button{
 	unsigned int click;
 	unsigned int mask;
 	unsigned int button;
 	void (*func)(const Arg *arg);
 	const Arg arg;
-} Button;
-
-typedef struct Monitor Monitor;
-typedef struct Client Client;
-struct Client {
-	char name[256];
-	float mina, maxa;
-	int x, y, w, h;
-	int oldx, oldy, oldw, oldh;
-	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
-	int bw, oldbw;
-	unsigned int tags;
-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
-	Client *next;
-	Client *snext;
-	Monitor *mon;
-	Window win;
 };
 
-typedef struct {
+typedef struct Monitor Monitor;
+
+// 保存窗口的各种属性和状态
+struct Client {
+	char name[256]; //窗口的名称或标题，最多可以包含 256 个字符。
+	float mina, maxa;//窗口的最小和最大宽高比。
+	int x, y, w, h;//窗口的位置和大小。x 和 y 表示窗口的左上角坐标，w 和 h 表示窗口的宽度和高度。
+	int oldx, oldy, oldw, oldh;//窗口的旧位置和大小，用于跟踪窗口的变化。
+	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
+    /*  basew, baseh：窗口的基本宽度和高度。
+        incw, inch：窗口的宽度和高度的增量值。
+        maxw, maxh：窗口的最大宽度和高度。
+        minw, minh：窗口的最小宽度和高度。
+        hintsvalid：标志表示窗口的大小提示信息是否有效。*/
+	int bw, oldbw;  //窗口的边框宽度，以及旧的边框宽度。
+	unsigned int tags;//窗口的标签，用于将窗口分组到不同的标签组中。
+	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+        /*isfixed：标志表示窗口是否被固定（不可移动和调整大小）。
+        isfloating：标志表示窗口是否浮动（不受平铺布局限制）。
+        isurgent：标志表示窗口是否处于紧急状态。
+        neverfocus：标志表示窗口是否不应该获得焦点。
+        oldstate：窗口的旧状态，通常用于在窗口恢复到正常状态时还原。
+        isfullscreen：标志表示窗口是否处于全屏状态。*/
+	Client *next;//指向下一个客户端窗口的指针，用于构建窗口链表。
+	Client *snext;//指向下一个浮动窗口的指针，用于构建浮动窗口链表。
+	Monitor *mon;//指向监视器的指针，表示窗口所在的监视器。
+	Window win;//窗口的 X11 窗口句柄。
+};
+
+struct Key{
 	unsigned int mod;
 	KeySym keysym;
 	void (*func)(const Arg *);
 	const Arg arg;
-} Key;
+};
 
-typedef struct {
+struct Layout{
 	const char *symbol;
 	void (*arrange)(Monitor *);
-} Layout;
+};
 
 
 struct Monitor {
@@ -127,12 +139,12 @@ struct Monitor {
 };
 
 struct Rule{
-	const char *_class;
-	const char *instance;
-	const char *title;
-	unsigned int tags;
-	int isfloating;
-	int monitor;
+    const char *_class; //这是用于区分窗口类型的字符串
+	const char *instance;//通常与类别一起用于更精确地区分窗口。
+	const char *title;//用于匹配窗口的标题。
+	unsigned int tags;//指定要分配给窗口的标签，使用二进制掩码的形式表示。
+	int isfloating;//表示该窗口应该被视为浮动窗口。
+	int monitor;//监视器索引。指定要将窗口分配到哪个监视器上，通过监视器的索引进行指定。
 };
 
 /* function declarations */
@@ -292,32 +304,37 @@ static Window root, wmcheckwin;
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
-/* function implementations */
-void
-applyrules(Client *c)
-{
+
+/*******************************************************************************
+ * 根据窗口规则设置窗口的属性
+*******************************************************************************/
+void applyrules(Client *c) {
+    // 存储窗口的类别和实例信息
 	const char *_class, *instance;
-	unsigned int i;
-	const Rule *r;
 	Monitor *m;
 	XClassHint ch = { NULL, NULL };
 
 	/* rule matching */
+    // 窗口是否浮动
 	c->isfloating = 0;
 	c->tags = 0;
+    // 获取窗口的类别和实例信息，并存储在ch中
 	XGetClassHint(dpy, c->win, &ch);
 	_class    = ch.res_class ? ch.res_class : broken;
 	instance = ch.res_name  ? ch.res_name  : broken;
 
-	for (i = 0; i < LENGTH(rules); i++) {
-		r = &rules[i];
+	for (int i = 0; i < LENGTH(rules); i++) {
+        const Rule *r = &rules[i];
+        // 如果规则标题为空或者窗口标题不等于规则标题
 		if ((!r->title || strstr(c->name, r->title))
+        // 如果规则的class为空，或者当前class和规则的calss不同
 		&& (!r->_class || strstr(_class, r->_class))
-		&& (!r->instance || strstr(instance, r->instance)))
-		{
+       // 如果规则的instance为空，或者当前instance和规则的instance不同
+		&& (!r->instance || strstr(instance, r->instance))) {
 			c->isfloating = r->isfloating;
 			c->tags |= r->tags;
-			for (m = mons; m && m->num != r->monitor; m = m->next);
+			for (m = mons; m && m->num != r->monitor; m = m->next)
+                ;
 			if (m)
 				c->mon = m;
 		}
@@ -326,6 +343,10 @@ applyrules(Client *c)
 		XFree(ch.res_class);
 	if (ch.res_name)
 		XFree(ch.res_name);
+    // 代码将客户端窗口的标签进行了重新调整。
+    // 它首先检查客户端窗口的标签是否在 TAGMASK 中，
+    // 如果在其中，则保持不变。
+    // 否则，它将客户端窗口的标签设置为当前监视器的标签集合中的标签。这确保了窗口的标签始终有效，并且不会超出当前监视器的标签集合。
 	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
 }
 
@@ -550,22 +571,30 @@ clientmessage(XEvent *e)
 	}
 }
 
-void
-configure(Client *c)
-{
+/*******************************************************************************
+ * 设置特定窗口的几何属性,重新绘制特定窗口
+*******************************************************************************/
+void configure(Client *c) {
+    // 用于通知x11服务器对窗口进行重新配置
 	XConfigureEvent ce;
-
+    // 通知事件
 	ce.type = ConfigureNotify;
 	ce.display = dpy;
+    // 事件窗口
 	ce.event = c->win;
+    // window和event相同，也是客户端窗口
 	ce.window = c->win;
 	ce.x = c->x;
 	ce.y = c->y;
 	ce.width = c->w;
 	ce.height = c->h;
 	ce.border_width = c->bw;
-	ce.above = None;
+    // 窗口的兄弟窗口，设置为 None 表示没有兄弟窗口。
+    ce.above = None;
+    // 覆盖重定向标志，设置为 False 表示窗口不会被覆盖重定向。
 	ce.override_redirect = False;
+    // 将这个 ConfigureNotify 事件发送给客户端窗口 c->win，
+    // 并指定了事件掩码 StructureNotifyMask，以通知 X11 服务器重新配置客户端窗口。
 	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
 }
 
@@ -1055,14 +1084,16 @@ killclient(const Arg *arg)
 	}
 }
 
-void
-manage(Window w, XWindowAttributes *wa)
-{
+/*******************************************************************************
+ * 用于管理创建的窗口
+*******************************************************************************/
+void manage(Window w, XWindowAttributes *wa) {
 	Client *c, *t = NULL;
 	Window trans = None;
 	XWindowChanges wc;
 
 	c = (Client *)ecalloc(1, sizeof(Client));
+    // window的句柄（编号）
 	c->win = w;
 	/* geometry */
 	c->x = c->oldx = wa->x;
@@ -1071,47 +1102,68 @@ manage(Window w, XWindowAttributes *wa)
 	c->h = c->oldh = wa->height;
 	c->oldbw = wa->border_width;
 
+    // 更新窗口的标题
 	updatetitle(c);
+    // 先检查窗口w是否具有传输窗口提示（一个对话框是主窗口的传输窗口），如果有获取句柄到trans
+    // 并尝试找到这个窗口
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
 		c->mon = t->mon;
 		c->tags = t->tags;
-	} else {
+	}
+    else {
 		c->mon = selmon;
 		applyrules(c);
 	}
-
+    // 检查客户端窗口的右边界是否超出了当前监视器的右边界
 	if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
 		c->x = c->mon->wx + c->mon->ww - WIDTH(c);
+    // 检查客户端窗口的下边界是否超出了当前监视器的下边界
 	if (c->y + HEIGHT(c) > c->mon->wy + c->mon->wh)
 		c->y = c->mon->wy + c->mon->wh - HEIGHT(c);
+    // 确保窗口的 x 和 y 坐标不会小于当前监视器的左上角坐标，以防窗口完全移出了监视器的可见区域。
 	c->x = MAX(c->x, c->mon->wx);
 	c->y = MAX(c->y, c->mon->wy);
+    // 边框
 	c->bw = borderpx;
-
 	wc.border_width = c->bw;
+
+    // 设置边框宽度, CWBorderWidth 表示 wc中的border_width 字段将被应用
 	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
+    // 设置边框颜色,pixel 用于获取颜色方案中边框颜色的像素值,并将这个像素值设置为客户端窗口的边框颜色
 	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
+    // 重绘
 	configure(c); /* propagates border_width, if size doesn't change */
 	updatewindowtype(c);
 	updatesizehints(c);
 	updatewmhints(c);
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
+    // 不激活按钮事件,用于支持鼠标操作
 	grabbuttons(c, 0);
 	if (!c->isfloating)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating)
+        // 将窗口置顶
 		XRaiseWindow(dpy, c->win);
+
+    // 将窗口添加到监视器的窗口链表中,确保正确的层叠顺序
 	attach(c);
 	attachstack(c);
+    // 将窗口 c->win 添加到根窗口的 _NET_CLIENT_LIST 属性中，这是 EWMH（扩展窗口管理器提示协议）的一部分，用于跟踪所有客户端窗口。
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
+    // 函数将窗口移动到指定的位置和大小，通常将其偏移了 2 * sw（两倍的屏幕宽度）
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
+    // 设置客户端窗口的状态为正常状态NormalState
 	setclientstate(c, NormalState);
 	if (c->mon == selmon)
+        // 取消焦点
 		unfocus(selmon->sel, 0);
 	c->mon->sel = c;
+    // 重新排列
 	arrange(c->mon);
+    // 映射到屏幕上，使其可见
 	XMapWindow(dpy, c->win);
+    // 设置焦点
 	focus(NULL);
 }
 
@@ -1417,24 +1469,33 @@ run(void)
 			handler[ev.type](&ev); /* call handler */
 }
 
-void
-scan(void)
-{
+/*******************************************************************************
+ * 扫描所有的窗口，并根据是否是辅助窗口来跳过或者调用manage函数
+*******************************************************************************/
+void scan(void) {
 	unsigned int i, num;
 	Window d1, d2, *wins = NULL;
 	XWindowAttributes wa;
 
+    // 查询根窗口下的所有窗口，并将结果存储在wins数组中,同时获取窗口的数量num
 	if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
 		for (i = 0; i < num; i++) {
+            // 获取wins[i]窗口的属性信息,存储在wa中
 			if (!XGetWindowAttributes(dpy, wins[i], &wa)
-			|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
+            // 如果窗口的override_redirect属性为真，或者窗口具有XGetTransientForHint提示（通常用于指示窗口是某个主窗口的辅助窗口），则跳过该窗口
+                || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
 				continue;
+            // 如果窗口的状态是可视状态 或者 窗口的状态为最小化状态，则调用manage函数对窗口进行管理
 			if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
-				manage(wins[i], &wa);
+				// 管理窗口,进行重排等操作
+                manage(wins[i], &wa);
 		}
+        // 检查窗口的属性和状态来判断是否要管理该窗口
 		for (i = 0; i < num; i++) { /* now the transients */
+            // 将窗口的信息存储在wa中
 			if (!XGetWindowAttributes(dpy, wins[i], &wa))
 				continue;
+            //
 			if (XGetTransientForHint(dpy, wins[i], &d1)
 			&& (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
 				manage(wins[i], &wa);
@@ -1564,7 +1625,7 @@ setmfact(const Arg *arg)
 }
 
 /*******************************************************************************
- * 设置 TODO
+ * 设置DWM的许多配置，例如字体，颜色，状态栏，窗口的事件监听等
 *******************************************************************************/
 void setup(void) {
     // 设置窗口属性
@@ -2143,18 +2204,22 @@ void updatestatus(void) {
 	drawbar(selmon);
 }
 
-void
-updatetitle(Client *c)
-{
+/*******************************************************************************
+ * 更新窗口的标题
+*******************************************************************************/
+void updatetitle(Client *c) {
+    // 从窗口的_NET_WM_NAME属性中获取窗口的名称并存储到c->name中
 	if (!gettextprop(c->win, netatom[NetWMName], c->name, sizeof c->name))
 		gettextprop(c->win, XA_WM_NAME, c->name, sizeof c->name);
-	if (c->name[0] == '\0') /* hack to mark broken clients */
+    // 如果没有获取到窗口的名称,将窗口的名称设置为“broken”
+	if (c->name[0] == '\0') /* hack to mark broken clients,标记损坏的客户端 */
 		strcpy(c->name, broken);
 }
 
-void
-updatewindowtype(Client *c)
-{
+/*******************************************************************************
+ * 更新窗口属性
+*******************************************************************************/
+void updatewindowtype(Client *c) {
 	Atom state = getatomprop(c, netatom[NetWMState]);
 	Atom wtype = getatomprop(c, netatom[NetWMWindowType]);
 
@@ -2194,18 +2259,17 @@ view(const Arg *arg)
 	focus(NULL);
 	arrange(selmon);
 }
-
-Client *
-wintoclient(Window w)
-{
-	Client *c;
-	Monitor *m;
-
-	for (m = mons; m; m = m->next)
-		for (c = m->clients; c; c = c->next)
+/*******************************************************************************
+ * 通过window编号在所有窗口中找到指向这个窗口的指针
+*******************************************************************************/
+Client* wintoclient(Window w) {
+    // 遍历所有监视器
+	for (Monitor *m = mons; m; m = m->next)
+        // 遍历所有窗口
+		for (Client *c = m->clients; c; c = c->next)
 			if (c->win == w)
 				return c;
-	return NULL;
+	return nullptr;
 }
 
 Monitor *
