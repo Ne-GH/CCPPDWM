@@ -1,7 +1,5 @@
-#include <errno.h>
 #include <locale.h>
 #include <signal.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +7,6 @@
 
 #include <string>
 
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
@@ -48,6 +45,7 @@ enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms *
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
 
+// 参数
 union Arg{
 	int i;
 	unsigned int ui;
@@ -55,15 +53,16 @@ union Arg{
 	const void *v;
 };
 
+// 鼠标事件
 struct Button{
-	unsigned int click;
-	unsigned int mask;
-	unsigned int button;
-	void (*func)(const Arg *arg);
-	const Arg arg;
+	unsigned int click;     // 点击区域
+	unsigned int mask;      // 键盘掩码
+	unsigned int button;    // 按键编号
+	void (*func)(const Arg *arg); // 处理鼠标事件的函数
+	const Arg arg;// func的参数
 };
 
-typedef struct Monitor Monitor;
+struct Monitor;
 
 // 保存窗口的各种属性和状态
 struct Client {
@@ -93,10 +92,10 @@ struct Client {
 };
 
 struct Key{
-	unsigned int mod;
-	KeySym keysym;
-	void (*func)(const Arg *);
-	const Arg arg;
+	unsigned int mod;   // 修饰键，ctrl | shift | alt 等
+	KeySym keysym;// 按键
+	void (*func)(const Arg *);// 处理这组按键的函数
+	const Arg arg;// 参数
 };
 
 struct Layout{
@@ -134,7 +133,7 @@ struct Monitor {
 	Client *sel;    // 一个指向当前选定的客户端窗口的指针。
 	Client *stack; //一个指向客户端窗口堆栈的链表，通常用于管理窗口的层叠顺序。
 	Monitor *next; // 一个指向下一个监视器的指针，通常用于连接多个监视器。
-	Window barwin; // 一个窗口（Window）类型的变量，表示状态栏的窗口句柄。
+	Window barwin; // 任务栏的窗口句柄。
 	const Layout *lt[2]; // 一个指向布局（Layout）结构体的数组，通常包含两种不同的布局模式，例如平铺布局和主区域布局。
 };
 
@@ -253,17 +252,17 @@ static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent]) (XEvent *) = {
     [0] = nullptr,
     [1] = nullptr,
-    [KeyPress] = keypress,//2
+    [KeyPress] = keypress,//2 键盘事件
     [3] = nullptr,
-    [ButtonPress] = buttonpress,//4
+    [ButtonPress] = buttonpress,//4 ,鼠标点击事件
     [5] = nullptr,
-    [MotionNotify] = motionnotify,//6
-    [EnterNotify] = enternotify,//7
+    [MotionNotify] = motionnotify,//6 鼠标移动事件
+    [EnterNotify] = enternotify,//7 鼠标进入窗口事件
     [8] = nullptr,
-    [FocusIn] = focusin,//9
+    [FocusIn] = focusin,//9 处理焦点 TODO
     [10] = nullptr,
     [11] = nullptr,
-    [Expose] = expose,//12
+    [Expose] = expose,//12 处理曝光事件,此处重绘了事件对应的监视器上的状态栏
     [13] = nullptr,
     [14] = nullptr,
     [15] = nullptr,
@@ -312,7 +311,7 @@ void applyrules(Client *c) {
     // 存储窗口的类别和实例信息
 	const char *_class, *instance;
 	Monitor *m;
-	XClassHint ch = { NULL, NULL };
+	XClassHint ch = {nullptr, nullptr };
 
 	/* rule matching */
     // 窗口是否浮动
@@ -454,43 +453,59 @@ attachstack(Client *c)
 	c->mon->stack = c;
 }
 
-void
-buttonpress(XEvent *e)
-{
-	unsigned int i, x, click;
+/*******************************************************************************
+ * 处理鼠标点击事件
+*******************************************************************************/
+void buttonpress(XEvent *e) {
 	Arg arg = {0};
 	Client *c;
 	Monitor *m;
+    // 获取鼠标事件，包括按下的按键、按键状态、鼠标所在窗口
 	XButtonPressedEvent *ev = &e->xbutton;
 
-	click = ClkRootWin;
+	int click = ClkRootWin;
 	/* focus monitor if necessary */
+    // 检测点击的监视器是哪一个，如果不是当前监视器
+    // 切换监视器并重新聚焦
 	if ((m = wintomon(ev->window)) && m != selmon) {
 		unfocus(selmon->sel, 1);
 		selmon = m;
 		focus(NULL);
 	}
+    // 如果点击的窗口是当前监视器中的任务栏,TODO
 	if (ev->window == selmon->barwin) {
-		i = x = 0;
+        unsigned int i = 0,x = 0;
+        // 判断点击区域
 		do
 			x += TEXTW(tags[i]);
 		while (ev->x >= x && ++i < LENGTH(tags));
+
+        // 如果点击的是tag
 		if (i < LENGTH(tags)) {
 			click = ClkTagBar;
 			arg.ui = 1 << i;
-		} else if (ev->x < x + TEXTW(selmon->ltsymbol))
+		}
+        // 如果点击的是layout
+        else if (ev->x < x + TEXTW(selmon->ltsymbol))
 			click = ClkLtSymbol;
+        // 如果点击的是状态栏文本
 		else if (ev->x > selmon->ww - (int)TEXTW(stext))
 			click = ClkStatusText;
+        // 如果点击的是窗口标题区域
 		else
 			click = ClkWinTitle;
-	} else if ((c = wintoclient(ev->window))) {
+	}
+    // 如果点击的是普通窗口
+    else if ((c = wintoclient(ev->window))) {
 		focus(c);
+        // 重新排列当前监视器上的窗口
 		restack(selmon);
+        // 允许X服务器记录并重放事件，确保鼠标点击事件能够正常工作
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 		click = ClkClientWin;
 	}
-	for (i = 0; i < LENGTH(buttons); i++)
+    // 遍历config中定义的鼠标按键
+	for (int i = 0; i < LENGTH(buttons); i++)
 		if (click == buttons[i].click && buttons[i].func && buttons[i].button == ev->button
 		&& CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
 			buttons[i].func(click == ClkTagBar && buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
@@ -508,31 +523,45 @@ void checkotherwm(void) {
 	XSync(dpy, False);
 }
 
-void
-cleanup(void)
-{
+/*******************************************************************************
+ * 退出dwm时释放所有资源
+*******************************************************************************/
+void cleanup(void) {
 	Arg a = {.ui = (unsigned int)~0};
 	Layout foo = { "", NULL };
 	Monitor *m;
 	size_t i;
 
+    // 将当前桌面视图切换到一个默认的视图，以确保所有客户端都被移动到一个可见的桌面
 	view(&a);
+    // 将当前的layout置空
 	selmon->lt[selmon->sellt] = &foo;
+    // 遍历所有监视器，如果还是窗口，就取消管理这些窗口
 	for (m = mons; m; m = m->next)
 		while (m->stack)
 			unmanage(m->stack, 0);
+    // 取消注册dwm监听的所有键盘快捷键
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
+    // 循环释放所有监视器
 	while (mons)
 		cleanupmon(mons);
+    // 释放所有光标
 	for (i = 0; i < CurLast; i++)
 		drw_cur_free(drw, cursor[i]);
+    // 释放所有颜色方案
 	for (i = 0; i < LENGTH(colors); i++)
 		free(scheme[i]);
+    // 释放颜色方案数组
 	free(scheme);
+    // 销毁dwm使用的用于支持_NET_SUPPORTING_CHECK
 	XDestroyWindow(dpy, wmcheckwin);
+    // 释放drw
 	drw_free(drw);
+    // 确保所有未完成的X协议请求都被处理
 	XSync(dpy, False);
+    // 将输入焦点设置为根窗口
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
+    // 删除 _NET_ACTIVE_WINDOW属性
 	XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
 }
 
@@ -809,32 +838,44 @@ drawbars(void)
 		drawbar(m);
 }
 
-void
-enternotify(XEvent *e)
-{
+/*******************************************************************************
+ * 鼠标进入窗口事件
+*******************************************************************************/
+void enternotify(XEvent *e) {
 	Client *c;
 	Monitor *m;
 	XCrossingEvent *ev = &e->xcrossing;
-
-	if ((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != root)
+    // !(如果事件模式是“进入窗口” 或者 详细信息是“鼠标进入了窗口”)
+	if ((ev->mode != NotifyNormal || ev->detail == NotifyInferior)
+    // 并且事件的窗口不是根窗口，直接返回
+    && ev->window != root)
 		return;
+    // 获取该窗口
 	c = wintoclient(ev->window);
+    // 获取监视器
 	m = c ? c->mon : wintomon(ev->window);
+    // 如果不是当前监视器
 	if (m != selmon) {
 		unfocus(selmon->sel, 1);
 		selmon = m;
-	} else if (!c || c == selmon->sel)
+	}
+    // 如果 窗口不存在或者窗口是当前窗口
+    else if (!c || c == selmon->sel)
 		return;
 	focus(c);
 }
 
-void
-expose(XEvent *e)
-{
+/*******************************************************************************
+ * 处理曝光事件(通知窗口管理器和应用程序窗口的内容需要重绘)
+*******************************************************************************/
+void expose(XEvent *e) {
 	Monitor *m;
 	XExposeEvent *ev = &e->xexpose;
 
+    // ==0时曝光事件的序列已经完成，曝光事件是按照一系列事件依次发送的，ev->count 指示了还有多少个曝光事件在队列中等待处理。当 ev->count 为零时，表示曝光事件序列已完成。
+    // 获取事件所在的监视器
 	if (ev->count == 0 && (m = wintomon(ev->window)))
+        // 重绘该监视器上的状态栏
 		drawbar(m);
 }
 
@@ -868,11 +909,11 @@ focus(Client *c)
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
-void
-focusin(XEvent *e)
-{
+// 处理焦点
+void focusin(XEvent *e) {
 	XFocusChangeEvent *ev = &e->xfocus;
-
+    // 如果当前监视器指向的窗口不为空
+    // 并且 事件窗口不等于当前监视器所在的当前窗口
 	if (selmon->sel && ev->window != selmon->sel->win)
 		setfocus(selmon->sel);
 }
@@ -1052,20 +1093,24 @@ static int isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo
 }
 #endif /* XINERAMA */
 
-void
-keypress(XEvent *e)
-{
-	unsigned int i;
+/*******************************************************************************
+ * 处理键盘事件
+*******************************************************************************/
+void keypress(XEvent *e) {
 	KeySym keysym;
-	XKeyEvent *ev;
+    XKeyEvent *ev = &e->xkey;
 
-	ev = &e->xkey;
+    // 获取按下的按键编码、按键状态
 	keysym = XKeycodeToKeysym(dpy, (KeyCode)ev->keycode, 0);
-	for (i = 0; i < LENGTH(keys); i++)
+    // 遍历config中定义的所有按键组合
+	for (int i = 0; i < LENGTH(keys); i++)
+        // 按键是否相同
 		if (keysym == keys[i].keysym
-		&& CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)
-		&& keys[i].func)
-			keys[i].func(&(keys[i].arg));
+        // 修饰键组合是否相同
+        && CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)
+        // 是否有处理该按键的函数，有的话就调用,并传参
+        && keys[i].func)
+            keys[i].func(&(keys[i].arg));
 }
 
 void
@@ -1204,15 +1249,21 @@ monocle(Monitor *m)
 		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
 }
 
-void
-motionnotify(XEvent *e)
-{
-	static Monitor *mon = NULL;
+/*******************************************************************************
+ * 处理鼠标移动事件
+*******************************************************************************/
+void motionnotify(XEvent *e) {
+    // 当前监视器
+	Monitor *mon = NULL;
 	Monitor *m;
+    // 鼠标移动事件
 	XMotionEvent *ev = &e->xmotion;
 
+    // 如果点击的不是根窗口，直接返回
 	if (ev->window != root)
 		return;
+    // 确定鼠标所在的监视器
+    // 如果鼠标所在监视器和当前监视器不同
 	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
 		unfocus(selmon->sel, 1);
 		selmon = m;
@@ -1334,9 +1385,10 @@ propertynotify(XEvent *e)
 	}
 }
 
-void
-quit(const Arg *arg)
-{
+/*******************************************************************************
+ * 键盘事件：退出dwm
+*******************************************************************************/
+void quit(const Arg *arg) {
 	running = 0;
 }
 
@@ -1458,14 +1510,21 @@ restack(Monitor *m)
 	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
 
-void
-run(void)
-{
+
+/*******************************************************************************
+ * dwm窗口的主事件循环
+*******************************************************************************/
+void run(void) {
 	XEvent ev;
 	/* main event loop */
+    // 确保X服务器中的事件和窗口状态已经与客户端（dwm）同步
+    // 可以确保之后的事件处理不会与之前的事件状态混淆
 	XSync(dpy, False);
+    // 正在运行 并且 阻塞地获取下一个事件
 	while (running && !XNextEvent(dpy, &ev))
+        // 如果事件的类型处理方法(函数指针)不为null
 		if (handler[ev.type])
+            // 处理这个方法
 			handler[ev.type](&ev); /* call handler */
 }
 
