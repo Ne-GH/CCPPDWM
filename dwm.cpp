@@ -267,12 +267,12 @@ static void (*handler[LASTEvent]) (XEvent *) = {
     [14] = nullptr,
     [15] = nullptr,
     [16] = nullptr,
-    [DestroyNotify] = destroynotify,//17
-    [UnmapNotify] = unmapnotify,//18
+    [DestroyNotify] = destroynotify,//17 处理 X Window 系统中窗口销毁通知事件 XDestroyWindowEvent
+    [UnmapNotify] = unmapnotify,//18 unmapnotify 函数用于处理窗口取消映射通知事件。
     [19] = nullptr,
-    [MapRequest] = maprequest,//20
+    [MapRequest] = maprequest,//20 // 处理 X Window 系统中的窗口映射请求事件 (XMapRequestEvent)
     [21] = nullptr,
-    [ConfigureNotify] = configurenotify,//22
+    [ConfigureNotify] = configurenotify,//22 处理 X Window 系统中的窗口配置通知事件 (XConfigureEvent)，重排窗口等
     [ConfigureRequest] = configurerequest,//23
     [24] = nullptr,
     [25] = nullptr,
@@ -283,7 +283,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
     [30] = nullptr,
     [31] = nullptr,
     [32] = nullptr,
-    [ClientMessage] = clientmessage,//33
+    [ClientMessage] = clientmessage,//33 处理客户端窗口发送的客户端消息事件
     [MappingNotify] = mappingnotify,//34
 };
 static Atom wmatom[WMLast], netatom[NetLast];
@@ -417,23 +417,32 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 	return *x != c->x || *y != c->y || *w != c->w || *h != c->h;
 }
 
-void
-arrange(Monitor *m)
-{
-	if (m)
-		showhide(m->stack);
-	else for (m = mons; m; m = m->next)
-		showhide(m->stack);
+// 重新排列所有客户端，以适应新的窗口几何信息。
+void arrange(Monitor *m) {
 	if (m) {
+        showhide(m->stack);
+    }
+	else {
+        for (m = mons; m; m = m->next)
+            showhide(m->stack);
+    }
+
+	if (m) {
+        // 根据当前的布局策略来重新排列客户端窗口。不同的布局策略会导致窗口的不同排列方式，例如平铺、浮动等。
 		arrangemon(m);
+        // 重新排列监视器上的窗口，确保它们的层叠顺序正确。这是因为窗口的层叠顺序可能会受到其他窗口的遮挡或影响。
 		restack(m);
-	} else for (m = mons; m; m = m->next)
-		arrangemon(m);
+	}
+    else {
+        for (m = mons; m; m = m->next)
+            arrangemon(m);
+    }
 }
 
-void
-arrangemon(Monitor *m)
-{
+/*******************************************************************************
+ * 根据当前的布局策略来重新排列客户端窗口。不同的布局策略会导致窗口的不同排列方式，例如平铺、浮动等。
+*******************************************************************************/
+void arrangemon(Monitor *m) {
 	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
 	if (m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
@@ -581,21 +590,29 @@ cleanupmon(Monitor *mon)
 	free(mon);
 }
 
-void
-clientmessage(XEvent *e)
-{
+/*******************************************************************************
+ * 处理客户端窗口发送的客户端消息事件
+*******************************************************************************/
+void clientmessage(XEvent *e) {
 	XClientMessageEvent *cme = &e->xclient;
 	Client *c = wintoclient(cme->window);
 
 	if (!c)
 		return;
+    // 检查接收到的客户端消息事件的类型是否为 _NET_WM_STATE，这通常用于客户端通知窗口状态的变化。
 	if (cme->message_type == netatom[NetWMState]) {
+        // 检查客户端消息事件中的数据字段，以确定是否涉及全屏状态的变化
+        // 如果为 1（表示添加全屏状态）或 2（表示切换全屏状态）
 		if (cme->data.l[1] == netatom[NetWMFullscreen]
 		|| cme->data.l[2] == netatom[NetWMFullscreen])
 			setfullscreen(c, (cme->data.l[0] == 1 /* _NET_WM_STATE_ADD    */
 				|| (cme->data.l[0] == 2 /* _NET_WM_STATE_TOGGLE */ && !c->isfullscreen)));
-	} else if (cme->message_type == netatom[NetActiveWindow]) {
+	}
+    // 检查接收到的客户端消息事件的类型是否为 _NET_ACTIVE_WINDOW，这通常用于激活或突出显示窗口。
+    else if (cme->message_type == netatom[NetActiveWindow]) {
+        // 检查客户端窗口是否不是当前选中监视器 selmon 上的选中窗口，并且窗口不是紧急窗口。
 		if (c != selmon->sel && !c->isurgent)
+            // 将窗口 c 设置为紧急窗口，以突出显示它。
 			seturgent(c, 1);
 	}
 }
@@ -627,19 +644,27 @@ void configure(Client *c) {
 	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
 }
 
-void
-configurenotify(XEvent *e)
-{
+/*******************************************************************************
+ * 处理 X Window 系统中的窗口配置通知事件 (XConfigureEvent)。
+ * 重排窗口等
+*******************************************************************************/
+void configurenotify(XEvent *e) {
 	Monitor *m;
 	Client *c;
 	XConfigureEvent *ev = &e->xconfigure;
 	int dirty;
 
-	/* TODO: updategeom handling sucks, needs to be simplified */
+	/* TODO: updategeom handling sucks, needs to be simplified
+	 *       updategeom 处理很糟糕，需要简化
+	**/
 	if (ev->window == root) {
+        // 计算变量 dirty，用于表示窗口的宽度或高度是否发生了变化
+        // 如果当前的窗口宽度 (sw) 或高度 (sh) 与配置通知事件中的宽度 (ev->width) 或高度 (ev->height) 不相等，则表示窗口的大小发生了变化。
 		dirty = (sw != ev->width || sh != ev->height);
 		sw = ev->width;
 		sh = ev->height;
+        // 更新窗口管理器的几何信息（例如监视器的位置和大小），
+        // || 检查是否窗口的大小发生了变化 (dirty) 或几何信息需要更新。
 		if (updategeom() || dirty) {
 			drw_resize(drw, sw, bh);
 			updatebars();
@@ -647,9 +672,11 @@ configurenotify(XEvent *e)
 				for (c = m->clients; c; c = c->next)
 					if (c->isfullscreen)
 						resizeclient(c, m->mx, m->my, m->mw, m->mh);
+                // 移动和调整监视器上的状态栏的位置和大小，以适应新的监视器几何信息。
 				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
 			}
 			focus(NULL);
+            // 重新排列所有客户端，以适应新的窗口几何信息。
 			arrange(NULL);
 		}
 	}
@@ -724,12 +751,13 @@ createmon(void)
 	return m;
 }
 
-void
-destroynotify(XEvent *e)
-{
+/*******************************************************************************
+ * 处理X 系统窗口中窗口销毁通知事件 “XDestroyWindowEvent”
+*******************************************************************************/
+void destroynotify(XEvent *e) {
 	Client *c;
 	XDestroyWindowEvent *ev = &e->xdestroywindow;
-
+    // 如果获取到这个窗口,就删除这个窗口
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
 }
@@ -1212,24 +1240,33 @@ void manage(Window w, XWindowAttributes *wa) {
 	focus(NULL);
 }
 
-void
-mappingnotify(XEvent *e)
-{
+/*******************************************************************************
+ * 处理映射通知事件
+*******************************************************************************/
+void mappingnotify(XEvent *e) {
 	XMappingEvent *ev = &e->xmapping;
-
+    // 用于刷新键盘映射。它将更新 X 服务器中的键盘映射，
+    // 以反映实际键盘布局的变化。这是为了确保键盘事件被正确地映射到键盘键。
 	XRefreshKeyboardMapping(ev);
+    // 检查映射事件的 request 字段是否等于 MappingKeyboard。这表示该事件是与键盘映射相关的
 	if (ev->request == MappingKeyboard)
+        // 重新注册键盘快捷键的绑定
 		grabkeys();
 }
 
-void
-maprequest(XEvent *e)
-{
+/*******************************************************************************
+ * 处理 X Window 系统中的窗口映射请求事件 (XMapRequestEvent)
+*******************************************************************************/
+void maprequest(XEvent *e) {
+    // static , wa用于存储窗口属性信息
 	static XWindowAttributes wa;
 	XMapRequestEvent *ev = &e->xmaprequest;
 
+    // 声明并初始化了一个指向 XMapRequestEvent 结构体的指针 ev，它用于表示窗口映射请求事件的详细信息。
+    //|| 检查属性中的 override_redirect 字段，如果该字段为真（非零），表示该窗口具有覆盖重定向属性，通常这种窗口是不受窗口管理器控制的独立顶级窗口，因此不需要进行管理，直接返回。
 	if (!XGetWindowAttributes(dpy, ev->window, &wa) || wa.override_redirect)
 		return;
+    // 获取到窗口就去管理该窗口
 	if (!wintoclient(ev->window))
 		manage(ev->window, &wa);
 }
@@ -1814,22 +1851,28 @@ void setup(void) {
 	focus(NULL);
 }
 
-void
-seturgent(Client *c, int urg)
-{
+/*******************************************************************************
+ * 将窗口标记为紧急窗口。
+ * 如果 urg 为非零（通常为 1），则窗口被标记为紧急窗口；如果 urg 为零，窗口将取消紧急窗口标记。
+*******************************************************************************/
+void seturgent(Client *c, int urg) {
 	XWMHints *wmh;
 
 	c->isurgent = urg;
+    // 检查是否成功获取窗口提示（XWMHints）的结构体。
 	if (!(wmh = XGetWMHints(dpy, c->win)))
 		return;
+    // 传入的 urg 值来更新窗口提示结构体的 flags 字段，以添加或取消紧急窗口提示标志。如果 urg 为非零，表示窗口应标记为紧急窗口，就会设置 XUrgencyHint 标志；如果 urg 为零，表示窗口应取消紧急窗口标志，就会将 XUrgencyHint 标志从 flags 中移除。
 	wmh->flags = urg ? (wmh->flags | XUrgencyHint) : (wmh->flags & ~XUrgencyHint);
 	XSetWMHints(dpy, c->win, wmh);
+    // 将更新后的窗口提示结构体重新设置到窗口 c->win 上，以便通知窗口管理器或窗口管理器的用户界面环境有关窗口的重要性。
 	XFree(wmh);
 }
 
-void
-showhide(Client *c)
-{
+/*******************************************************************************
+ * 如果可见就隐藏，如果不可见就显示
+*******************************************************************************/
+void showhide(Client *c) {
 	if (!c)
 		return;
 	if (ISVISIBLE(c)) {
@@ -2009,15 +2052,19 @@ unmanage(Client *c, int destroyed)
 	arrange(m);
 }
 
-void
-unmapnotify(XEvent *e)
-{
+/*******************************************************************************
+ * unmapnotify 函数用于处理窗口取消映射通知事件。
+ * 根据事件的来源和原因，将客户端的状态设置为 WithdrawnState 或者从窗口管理器中移除客户端。这有助于确保窗口的正确处理和管理。
+*******************************************************************************/
+void unmapnotify(XEvent *e) {
 	Client *c;
 	XUnmapEvent *ev = &e->xunmap;
 
 	if ((c = wintoclient(ev->window))) {
+        // 这一行代码检查窗口取消映射事件是否是由客户端发送的。如果是客户端发送的事件，表示客户端主动取消了映射，因此将客户端的状态设置为 WithdrawnState，表示窗口已撤回。
 		if (ev->send_event)
 			setclientstate(c, WithdrawnState);
+        // 如果不是客户端发送的事件，表示窗口由其他原因取消了映射，那么就调用 unmanage 函数来从窗口管理器中移除指定的客户端 c，但不销毁客户端。这意味着窗口不再管理，但仍然可以恢复到正常状态，以备后续重新映射
 		else
 			unmanage(c, 0);
 	}
