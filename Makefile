@@ -45,7 +45,7 @@ CC = g++
 
 
 # 源文件有drw.c dwm.c util.c
-SRC = drw.cpp dwm.cpp util.cpp
+SRC = drw.cpp dwm.cpp util.cpp Client.cpp Monitor.cpp
 
 # 将SCR中所有的.c后缀改为.o
 OBJ = ${SRC:.cpp=.o}

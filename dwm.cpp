@@ -7,18 +7,11 @@
 
 #include <string>
 
-#include <sys/wait.h>
-#include <X11/cursorfont.h>
-#include <X11/keysym.h>
-#include <X11/Xatom.h>
-#include <X11/Xlib.h>
-#include <X11/Xproto.h>
-#include <X11/Xutil.h>
-#ifdef XINERAMA
-#include <X11/extensions/Xinerama.h>
-#endif /* XINERAMA */
-#include <X11/Xft/Xft.h>
 
+
+#include "Dwm.h"
+#include "Client.h"
+#include "Monitor.h"
 #include "drw.h"
 #include "util.h"
 
@@ -46,7 +39,7 @@ enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
 
 // 参数
-union Arg{
+union Arg {
 	int i;
 	unsigned int ui;
 	float f;
@@ -54,7 +47,7 @@ union Arg{
 };
 
 // 鼠标事件
-struct Button{
+struct Button {
 	unsigned int click;     // 点击区域
 	unsigned int mask;      // 键盘掩码
 	unsigned int button;    // 按键编号
@@ -63,33 +56,8 @@ struct Button{
 };
 
 struct Monitor;
+struct Client;
 
-// 保存窗口的各种属性和状态
-struct Client {
-	char name[256]; //窗口的名称或标题，最多可以包含 256 个字符。
-	float mina, maxa;//窗口的最小和最大宽高比。
-	int x, y, w, h;//窗口的位置和大小。x 和 y 表示窗口的左上角坐标，w 和 h 表示窗口的宽度和高度。
-	int oldx, oldy, oldw, oldh;//窗口的旧位置和大小，用于跟踪窗口的变化。
-	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
-    /*  basew, baseh：窗口的基本宽度和高度。
-        incw, inch：窗口的宽度和高度的增量值。
-        maxw, maxh：窗口的最大宽度和高度。
-        minw, minh：窗口的最小宽度和高度。
-        hintsvalid：标志表示窗口的大小提示信息是否有效。*/
-	int bw, oldbw;  //窗口的边框宽度，以及旧的边框宽度。
-	unsigned int tags;//窗口的标签，用于将窗口分组到不同的标签组中。
-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
-        /*isfixed：标志表示窗口是否被固定（不可移动和调整大小）。
-        isfloating：标志表示窗口是否浮动（不受平铺布局限制）。
-        isurgent：标志表示窗口是否处于紧急状态。
-        neverfocus：标志表示窗口是否不应该获得焦点。
-        oldstate：窗口的旧状态，通常用于在窗口恢复到正常状态时还原。
-        isfullscreen：标志表示窗口是否处于全屏状态。*/
-	Client *next;//指向下一个客户端窗口的指针，用于构建窗口链表。
-	Client *snext;//指向下一个浮动窗口的指针，用于构建浮动窗口链表。
-	Monitor *mon;//指向监视器的指针，表示窗口所在的监视器。
-	Window win;//窗口的 X11 窗口句柄。
-};
 
 struct Key{
 	unsigned int mod;   // 修饰键，ctrl | shift | alt 等
@@ -98,44 +66,11 @@ struct Key{
 	const Arg arg;// 参数
 };
 
-struct Layout{
-	const char *symbol;
-	void (*arrange)(Monitor *);
-};
+struct Layout;
 
 
-struct Monitor {
-	char ltsymbol[16];//一个字符串数组，用于存储监视器的布局符号（layout symbol）。这通常是一个用于表示当前布局模式的短字符串，例如 "T" 表示平铺布局，"M" 表示主区域布局，等等。
-	float mfact;//一个浮点数，表示主区域的宽度与整个屏幕宽度之比。通常用于控制平铺布局中主区域的大小。
-	int nmaster;//一个整数，表示主区域中主客户端的数量，通常用于平铺布局。
-	int num;//一个整数，表示监视器的编号或索引。
-	int by; //一个整数，表示状态栏（bar）的垂直位置，通常是状态栏距离屏幕顶部或底部的距离。              /* bar geometry */
-	int mx, my, mw, mh;   /* screen size
- *  mx, my, mw, mh：一组整数，表示监视器的屏幕位置和尺寸。
-        mx 和 my 表示监视器的左上角坐标。
-        mw 表示监视器的宽度。
-        mh 表示监视器的高度。*/
-	int wx, wy, ww, wh;   /* window area  */
-    /*
-     *  wx, wy, ww, wh：一组整数，表示监视器上的窗口区域。
-        wx 和 wy 表示窗口区域的左上角坐标。
-        ww 表示窗口区域的宽度。
-        wh 表示窗口区域的高度。 wx, wy, ww, wh：一组整数，表示监视器上的窗口区域。
-        wx 和 wy 表示窗口区域的左上角坐标。
-        ww 表示窗口区域的宽度。
-        wh 表示窗口区域的高度。*/
-	unsigned int seltags;//一个无符号整数，表示当前选定的标签集。
-	unsigned int sellt; //一个无符号整数，表示当前选定的布局模式。
-	unsigned int tagset[2];//一个整数数组，表示两个标签集，通常用于在不同的工作区之间切换。
-	int showbar;//一个整数，表示是否显示状态栏。通常用于控制状态栏的可见性。
-	int topbar; //一个整数，表示状态栏是否位于屏幕的顶部（1）或底部（0）。
-	Client *clients;    // 一个指向客户端窗口的链表，表示当前监视器上的所有客户端窗口。
-	Client *sel;    // 一个指向当前选定的客户端窗口的指针。
-	Client *stack; //一个指向客户端窗口堆栈的链表，通常用于管理窗口的层叠顺序。
-	Monitor *next; // 一个指向下一个监视器的指针，通常用于连接多个监视器。
-	Window barwin; // 任务栏的窗口句柄。
-	const Layout *lt[2]; // 一个指向布局（Layout）结构体的数组，通常包含两种不同的布局模式，例如平铺布局和主区域布局。
-};
+
+
 
 struct Rule{
     const char *_class; //这是用于区分窗口类型的字符串
@@ -154,8 +89,6 @@ static void arrangemon(Monitor *m);
 static void attach(Client *c);
 static void attachstack(Client *c);
 static void buttonpress(XEvent *e);
-static void checkotherwm(void);
-static void cleanup(void);
 static void cleanupmon(Monitor *mon);
 static void clientmessage(XEvent *e);
 static void configure(Client *c);
@@ -198,8 +131,6 @@ static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
-static void run(void);
-static void scan(void);
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
@@ -207,7 +138,6 @@ static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
-static void setup(void);
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
 static void sigchld(int unused);
@@ -233,11 +163,8 @@ static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
 static void updatewmhints(Client *c);
 static void view(const Arg *arg);
-static Client *wintoclient(Window w);
 static Monitor *wintomon(Window w);
-static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
-static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 /* variables */
@@ -303,6 +230,20 @@ static Window root, wmcheckwin;
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
+
+
+/*******************************************************************************
+ * 通过window编号在所有窗口中找到指向这个窗口的指针
+*******************************************************************************/
+Client* Client::wintoclient(Window w) {
+    // 遍历所有监视器
+    for (Monitor *m = mons; m; m = m->next)
+        // 遍历所有窗口
+        for (Client *c = m->clients; c; c = c->next)
+            if (c->win == w)
+                return c;
+    return nullptr;
+}
 
 /*******************************************************************************
  * 根据窗口规则设置窗口的属性
@@ -505,7 +446,7 @@ void buttonpress(XEvent *e) {
 			click = ClkWinTitle;
 	}
     // 如果点击的是普通窗口
-    else if ((c = wintoclient(ev->window))) {
+    else if ((c = Client::wintoclient(ev->window))) {
 		focus(c);
         // 重新排列当前监视器上的窗口
 		restack(selmon);
@@ -520,59 +461,9 @@ void buttonpress(XEvent *e) {
 			buttons[i].func(click == ClkTagBar && buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
 }
 
-/*******************************************************************************
- * 检查是否有其他窗口管理器运行
-*******************************************************************************/
-void checkotherwm(void) {
-	xerrorxlib = XSetErrorHandler(xerrorstart);
-	/* this causes an error if some other window manager is running */
-	XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
-	XSync(dpy, False);
-	XSetErrorHandler(xerror);
-	XSync(dpy, False);
-}
 
-/*******************************************************************************
- * 退出dwm时释放所有资源
-*******************************************************************************/
-void cleanup(void) {
-	Arg a = {.ui = (unsigned int)~0};
-	Layout foo = { "", NULL };
-	Monitor *m;
-	size_t i;
 
-    // 将当前桌面视图切换到一个默认的视图，以确保所有客户端都被移动到一个可见的桌面
-	view(&a);
-    // 将当前的layout置空
-	selmon->lt[selmon->sellt] = &foo;
-    // 遍历所有监视器，如果还是窗口，就取消管理这些窗口
-	for (m = mons; m; m = m->next)
-		while (m->stack)
-			unmanage(m->stack, 0);
-    // 取消注册dwm监听的所有键盘快捷键
-	XUngrabKey(dpy, AnyKey, AnyModifier, root);
-    // 循环释放所有监视器
-	while (mons)
-		cleanupmon(mons);
-    // 释放所有光标
-	for (i = 0; i < CurLast; i++)
-		drw_cur_free(drw, cursor[i]);
-    // 释放所有颜色方案
-	for (i = 0; i < LENGTH(colors); i++)
-		free(scheme[i]);
-    // 释放颜色方案数组
-	free(scheme);
-    // 销毁dwm使用的用于支持_NET_SUPPORTING_CHECK
-	XDestroyWindow(dpy, wmcheckwin);
-    // 释放drw
-	drw_free(drw);
-    // 确保所有未完成的X协议请求都被处理
-	XSync(dpy, False);
-    // 将输入焦点设置为根窗口
-	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
-    // 删除 _NET_ACTIVE_WINDOW属性
-	XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
-}
+
 
 void
 cleanupmon(Monitor *mon)
@@ -595,7 +486,7 @@ cleanupmon(Monitor *mon)
 *******************************************************************************/
 void clientmessage(XEvent *e) {
 	XClientMessageEvent *cme = &e->xclient;
-	Client *c = wintoclient(cme->window);
+	Client *c = Client::wintoclient(cme->window);
 
 	if (!c)
 		return;
@@ -690,7 +581,7 @@ configurerequest(XEvent *e)
 	XConfigureRequestEvent *ev = &e->xconfigurerequest;
 	XWindowChanges wc;
 
-	if ((c = wintoclient(ev->window))) {
+	if ((c = Client::wintoclient(ev->window))) {
 		if (ev->value_mask & CWBorderWidth)
 			c->bw = ev->border_width;
 		else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
@@ -758,7 +649,7 @@ void destroynotify(XEvent *e) {
 	Client *c;
 	XDestroyWindowEvent *ev = &e->xdestroywindow;
     // 如果获取到这个窗口,就删除这个窗口
-	if ((c = wintoclient(ev->window)))
+	if ((c = Client::wintoclient(ev->window)))
 		unmanage(c, 1);
 }
 
@@ -879,7 +770,7 @@ void enternotify(XEvent *e) {
     && ev->window != root)
 		return;
     // 获取该窗口
-	c = wintoclient(ev->window);
+	c = Client::wintoclient(ev->window);
     // 获取监视器
 	m = c ? c->mon : wintomon(ev->window);
     // 如果不是当前监视器
@@ -1141,6 +1032,23 @@ void keypress(XEvent *e) {
             keys[i].func(&(keys[i].arg));
 }
 
+int XError(Display *dpy, XErrorEvent *ee)
+{
+    if (ee->error_code == BadWindow
+        || (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
+        || (ee->request_code == X_PolyText8 && ee->error_code == BadDrawable)
+        || (ee->request_code == X_PolyFillRectangle && ee->error_code == BadDrawable)
+        || (ee->request_code == X_PolySegment && ee->error_code == BadDrawable)
+        || (ee->request_code == X_ConfigureWindow && ee->error_code == BadMatch)
+        || (ee->request_code == X_GrabButton && ee->error_code == BadAccess)
+        || (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
+        || (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
+        return 0;
+    fprintf(stderr, "dwm: fatal error: request code=%d, error code=%d\n",
+            ee->request_code, ee->error_code);
+    return xerrorxlib(dpy, ee); /* may call exit */
+}
+
 void
 killclient(const Arg *arg)
 {
@@ -1152,7 +1060,7 @@ killclient(const Arg *arg)
 		XSetCloseDownMode(dpy, DestroyAll);
 		XKillClient(dpy, selmon->sel->win);
 		XSync(dpy, False);
-		XSetErrorHandler(xerror);
+		XSetErrorHandler(XError);
 		XUngrabServer(dpy);
 	}
 }
@@ -1179,7 +1087,7 @@ void manage(Window w, XWindowAttributes *wa) {
 	updatetitle(c);
     // 先检查窗口w是否具有传输窗口提示（一个对话框是主窗口的传输窗口），如果有获取句柄到trans
     // 并尝试找到这个窗口
-	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
+	if (XGetTransientForHint(dpy, w, &trans) && (t = Client::wintoclient(trans))) {
 		c->mon = t->mon;
 		c->tags = t->tags;
 	}
@@ -1267,7 +1175,7 @@ void maprequest(XEvent *e) {
 	if (!XGetWindowAttributes(dpy, ev->window, &wa) || wa.override_redirect)
 		return;
     // 获取到窗口就去管理该窗口
-	if (!wintoclient(ev->window))
+	if (!Client::wintoclient(ev->window))
 		manage(ev->window, &wa);
 }
 
@@ -1396,12 +1304,12 @@ propertynotify(XEvent *e)
 		updatestatus();
 	else if (ev->state == PropertyDelete)
 		return; /* ignore */
-	else if ((c = wintoclient(ev->window))) {
+	else if ((c = Client::wintoclient(ev->window))) {
 		switch(ev->atom) {
 		default: break;
 		case XA_WM_TRANSIENT_FOR:
 			if (!c->isfloating && (XGetTransientForHint(dpy, c->win, &trans)) &&
-				(c->isfloating = (wintoclient(trans)) != NULL))
+				(c->isfloating = (Client::wintoclient(trans)) != NULL))
 				arrange(c->mon);
 			break;
 		case XA_WM_NORMAL_HINTS:
@@ -1548,58 +1456,9 @@ restack(Monitor *m)
 }
 
 
-/*******************************************************************************
- * dwm窗口的主事件循环
-*******************************************************************************/
-void run(void) {
-	XEvent ev;
-	/* main event loop */
-    // 确保X服务器中的事件和窗口状态已经与客户端（dwm）同步
-    // 可以确保之后的事件处理不会与之前的事件状态混淆
-	XSync(dpy, False);
-    // 正在运行 并且 阻塞地获取下一个事件
-	while (running && !XNextEvent(dpy, &ev))
-        // 如果事件的类型处理方法(函数指针)不为null
-		if (handler[ev.type])
-            // 处理这个方法
-			handler[ev.type](&ev); /* call handler */
-}
 
-/*******************************************************************************
- * 扫描所有的窗口，并根据是否是辅助窗口来跳过或者调用manage函数
-*******************************************************************************/
-void scan(void) {
-	unsigned int i, num;
-	Window d1, d2, *wins = NULL;
-	XWindowAttributes wa;
 
-    // 查询根窗口下的所有窗口，并将结果存储在wins数组中,同时获取窗口的数量num
-	if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
-		for (i = 0; i < num; i++) {
-            // 获取wins[i]窗口的属性信息,存储在wa中
-			if (!XGetWindowAttributes(dpy, wins[i], &wa)
-            // 如果窗口的override_redirect属性为真，或者窗口具有XGetTransientForHint提示（通常用于指示窗口是某个主窗口的辅助窗口），则跳过该窗口
-                || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
-				continue;
-            // 如果窗口的状态是可视状态 或者 窗口的状态为最小化状态，则调用manage函数对窗口进行管理
-			if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
-				// 管理窗口,进行重排等操作
-                manage(wins[i], &wa);
-		}
-        // 检查窗口的属性和状态来判断是否要管理该窗口
-		for (i = 0; i < num; i++) { /* now the transients */
-            // 将窗口的信息存储在wa中
-			if (!XGetWindowAttributes(dpy, wins[i], &wa))
-				continue;
-            //
-			if (XGetTransientForHint(dpy, wins[i], &d1)
-			&& (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
-				manage(wins[i], &wa);
-		}
-		if (wins)
-			XFree(wins);
-	}
-}
+
 
 void
 sendmon(Client *c, Monitor *m)
@@ -1720,136 +1579,7 @@ setmfact(const Arg *arg)
 	arrange(selmon);
 }
 
-/*******************************************************************************
- * 设置DWM的许多配置，例如字体，颜色，状态栏，窗口的事件监听等
-*******************************************************************************/
-void setup(void) {
-    // 设置窗口属性
-	XSetWindowAttributes wa;
 
-    // 清理所有僵尸进程
-	sigchld(0);
-
-	/* init screen */
-    // 获取当前屏幕编号
-	screen = DefaultScreen(dpy);
-    // 获取当前屏幕宽度
-	sw = DisplayWidth(dpy, screen);
-    // 获取当前屏幕高度
-	sh = DisplayHeight(dpy, screen);
-    // 获取指定屏幕的根窗口
-	root = RootWindow(dpy, screen);
-
-    // 创建绘图上下文
-	drw = drw_create(dpy, screen, root, sw, sh);
-    // 创建字体合集
-	if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
-		Die("no fonts could be loaded.");
-
-    // 字体的高
-	lrpad = drw->fonts->h;
-    // 边的高度(bar height),能够容纳字体
-	bh = drw->fonts->h + 2;
-
-    // 更新几何
-	updategeom();
-
-	/* init atoms */
-    // 获取一个名为UTF8_STRING的Atom存储在utf8string中,False 表示不创建新的Atom,只在x服务器中查找现有的Atom
-	Atom utf8string = XInternAtom(dpy, "UTF8_STRING", False);
-    // 窗口管理器协议
-	wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
-    // 窗口关闭请求协议
-	wmatom[WMDelete] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-    // 窗口状态协议
-	wmatom[WMState] = XInternAtom(dpy, "WM_STATE", False);
-    // 获取焦点协议
-	wmatom[WMTakeFocus] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
-    // 窗口管理器支持的扩展协议
-	netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
-    // 窗口的名称
-	netatom[NetWMName] = XInternAtom(dpy, "_NET_WM_NAME", False);
-    // 窗口状态扩展协议，用于管理窗口的状态
-	netatom[NetWMState] = XInternAtom(dpy, "_NET_WM_STATE", False);
-    // 用于检查窗口管理器是否运行
-	netatom[NetWMCheck] = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
-    // 全屏窗口状态
-	netatom[NetWMFullscreen] = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
-    // 当前活动的窗口
-    netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-    // 窗口类型
-	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-    // 对话框窗口类型
-	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
-    // 获取当前运行的客户端应用程序列表
-	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-
-    // 初始化鼠标
-    // 普通鼠标
-	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
-    // 调整窗口大小的鼠标
-	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
-    // 移动窗口的鼠标
-	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
-
-	/* init appearance */
-    // 初始化外观,(创建颜色集合)
-	scheme = (Clr **)ecalloc(LENGTH(colors), sizeof(Clr *));
-	for (int i = 0; i < LENGTH(colors); i++)
-		scheme[i] = drw_scm_create(drw, colors[i], 3);
-
-	/* init bars */
-    // 更新状态栏
-	updatebars();
-
-    // 更新状态栏的文本信息
-	updatestatus();
-	/* supporting window for NetWMCheck */
-    // NetWMCheck的支持窗口
-    // 创建一个大小为 1x1 像素，位置在坐标 (0, 0)，不可见的窗口
-	wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
-    // 窗口的属性设置为NET_WM_CHECK类型，值设置为wmcheckwin，这是为了支持EWMH
-	XChangeProperty(dpy, wmcheckwin, netatom[NetWMCheck], XA_WINDOW, 32,
-		PropModeReplace, (unsigned char *) &wmcheckwin, 1);
-    // 窗口的属性设置为 _NET_WM_NAME 类型，并将其值设置为 "dwm"，表示窗口管理器的名称。
-	XChangeProperty(dpy, wmcheckwin, netatom[NetWMName], utf8string, 8,
-		PropModeReplace, (unsigned char *) "dwm", 3);
-    //将窗口 wmcheckwin 的信息存储为一个属性，属性的类型是 _NET_WM_CHECK，属性的数据类型是窗口类型（XA_WINDOW），并且将其完全替换根窗口的相应属性。通常，这样的属性用于与窗口管理器通信，以支持特定的窗口管理功能或协议，例如 EWMH。
-	XChangeProperty(dpy, root, netatom[NetWMCheck], XA_WINDOW, 32,
-		PropModeReplace, (unsigned char *) &wmcheckwin, 1);
-	/* EWMH support per view */
-//     将根窗口的属性设置为 _NET_SUPPORTED 类型，其值是一个包含各种 Atom 类型的数组，以表明窗口管理器支持的 EWMH 特性。
-	XChangeProperty(dpy, root, netatom[NetSupported], XA_ATOM, 32,
-		PropModeReplace, (unsigned char *) netatom, NetLast);
-    // 删除根窗口的 _NET_CLIENT_LIST 属性，以便窗口管理器自行维护这个属性。
-    XDeleteProperty(dpy, root, netatom[NetClientList]);
-	/* select events */
-    //为根窗口设置事件监听和光标属性：
-    //
-    //    设置光标为正常状态下的光标形状。
-    //    设置事件掩码，以便根窗口能够监听并处理多种事件，包括窗口结构变化、鼠标按钮按下、鼠标指针移动、鼠标进入和离开窗口、窗口属性变化等。
-    //    使用 XChangeWindowAttributes 函数和 XSelectInput 函数分别为根窗口设置事件属性和事件监听。
-	wa.cursor = cursor[CurNormal]->cursor;
-    /*SubstructureRedirectMask：表示子窗口重定向事件，通常用于捕获窗口创建和销毁事件。
-    SubstructureNotifyMask：表示子窗口通知事件，通常用于捕获子窗口的改变事件，如改变大小或移动。
-    ButtonPressMask：表示鼠标按钮按下事件，用于捕获鼠标按键的点击事件。
-    PointerMotionMask：表示鼠标指针移动事件，用于捕获鼠标指针的移动。
-    EnterWindowMask：表示鼠标指针进入窗口事件。
-    LeaveWindowMask：表示鼠标指针离开窗口事件。
-    StructureNotifyMask：表示窗口结构变化事件，用于捕获窗口的改变，如创建、销毁、映射和取消映射。
-    PropertyChangeMask：表示属性变化事件，用于捕获窗口属性的改变。*/
-	wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask
-		|ButtonPressMask|PointerMotionMask|EnterWindowMask
-		|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
-    // 更改根窗口的属性,参数3表示要更改的属性标志，包括事件掩码和光标
-	XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
-    // 为根窗口（root）设置事件监听
-	XSelectInput(dpy, root, wa.event_mask);
-    //捕获键盘快捷键的输入事件，以便窗口管理器可以响应用户的键盘操作。
-	grabkeys();
-    //置窗口管理器的焦点
-	focus(NULL);
-}
 
 /*******************************************************************************
  * 将窗口标记为紧急窗口。
@@ -2043,7 +1773,7 @@ unmanage(Client *c, int destroyed)
 		XUngrabButton(dpy, AnyButton, AnyModifier, c->win);
 		setclientstate(c, WithdrawnState);
 		XSync(dpy, False);
-		XSetErrorHandler(xerror);
+		XSetErrorHandler(XError);
 		XUngrabServer(dpy);
 	}
 	free(c);
@@ -2060,7 +1790,7 @@ void unmapnotify(XEvent *e) {
 	Client *c;
 	XUnmapEvent *ev = &e->xunmap;
 
-	if ((c = wintoclient(ev->window))) {
+	if ((c = Client::wintoclient(ev->window))) {
         // 这一行代码检查窗口取消映射事件是否是由客户端发送的。如果是客户端发送的事件，表示客户端主动取消了映射，因此将客户端的状态设置为 WithdrawnState，表示窗口已撤回。
 		if (ev->send_event)
 			setclientstate(c, WithdrawnState);
@@ -2365,18 +2095,7 @@ view(const Arg *arg)
 	focus(NULL);
 	arrange(selmon);
 }
-/*******************************************************************************
- * 通过window编号在所有窗口中找到指向这个窗口的指针
-*******************************************************************************/
-Client* wintoclient(Window w) {
-    // 遍历所有监视器
-	for (Monitor *m = mons; m; m = m->next)
-        // 遍历所有窗口
-		for (Client *c = m->clients; c; c = c->next)
-			if (c->win == w)
-				return c;
-	return nullptr;
-}
+
 
 Monitor *
 wintomon(Window w)
@@ -2390,7 +2109,7 @@ wintomon(Window w)
 	for (m = mons; m; m = m->next)
 		if (w == m->barwin)
 			return m;
-	if ((c = wintoclient(w)))
+	if ((c = Client::wintoclient(w)))
 		return c->mon;
 	return selmon;
 }
@@ -2398,23 +2117,7 @@ wintomon(Window w)
 /* There's no way to check accesses to destroyed windows, thus those cases are
  * ignored (especially on UnmapNotify's). Other types of errors call Xlibs
  * default error handler, which may call exit. */
-int
-xerror(Display *dpy, XErrorEvent *ee)
-{
-	if (ee->error_code == BadWindow
-	|| (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
-	|| (ee->request_code == X_PolyText8 && ee->error_code == BadDrawable)
-	|| (ee->request_code == X_PolyFillRectangle && ee->error_code == BadDrawable)
-	|| (ee->request_code == X_PolySegment && ee->error_code == BadDrawable)
-	|| (ee->request_code == X_ConfigureWindow && ee->error_code == BadMatch)
-	|| (ee->request_code == X_GrabButton && ee->error_code == BadAccess)
-	|| (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
-	|| (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
-		return 0;
-	fprintf(stderr, "dwm: fatal error: request code=%d, error code=%d\n",
-		ee->request_code, ee->error_code);
-	return xerrorxlib(dpy, ee); /* may call exit */
-}
+
 
 int
 xerrordummy(Display *dpy, XErrorEvent *ee)
@@ -2422,14 +2125,6 @@ xerrordummy(Display *dpy, XErrorEvent *ee)
 	return 0;
 }
 
-/* Startup Error handler to check if another window manager
- * is already running. */
-int
-xerrorstart(Display *dpy, XErrorEvent *ee)
-{
-	Die("dwm: another window manager is already running");
-	return -1;
-}
 
 void
 zoom(const Arg *arg)
@@ -2442,6 +2137,260 @@ zoom(const Arg *arg)
 		return;
 	pop(c);
 }
+
+/*******************************************************************************
+  * 检查是否有其他窗口管理器运行
+ *******************************************************************************/
+void Dwm::CheckOtherWm(void) {
+    xerrorxlib = XSetErrorHandler([](Display *dpy, XErrorEvent *ee) ->int {
+        Die("dwm: another window manager is already running");
+        return -1;
+    });
+    /* this causes an error if some other window manager is running */
+    XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
+    XSync(dpy, False);
+    XSetErrorHandler(XError);
+    XSync(dpy, False);
+}
+
+/*******************************************************************************
+ * 设置DWM的许多配置，例如字体，颜色，状态栏，窗口的事件监听等
+*******************************************************************************/
+void Dwm::SetUp(void) {
+                  // 设置窗口属性
+                  XSetWindowAttributes wa;
+
+                  // 清理所有僵尸进程
+                  sigchld(0);
+
+                  /* init screen */
+                  // 获取当前屏幕编号
+                  screen = DefaultScreen(dpy);
+                  // 获取当前屏幕宽度
+                  sw = DisplayWidth(dpy, screen);
+                  // 获取当前屏幕高度
+                  sh = DisplayHeight(dpy, screen);
+                  // 获取指定屏幕的根窗口
+                  root = RootWindow(dpy, screen);
+
+                  // 创建绘图上下文
+                  drw = drw_create(dpy, screen, root, sw, sh);
+                  // 创建字体合集
+                  if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
+                  Die("no fonts could be loaded.");
+
+                  // 字体的高
+                  lrpad = drw->fonts->h;
+                  // 边的高度(bar height),能够容纳字体
+                  bh = drw->fonts->h + 2;
+
+                  // 更新几何
+                  updategeom();
+
+                  /* init atoms */
+                  // 获取一个名为UTF8_STRING的Atom存储在utf8string中,False 表示不创建新的Atom,只在x服务器中查找现有的Atom
+                  Atom utf8string = XInternAtom(dpy, "UTF8_STRING", False);
+                  // 窗口管理器协议
+                  wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
+                  // 窗口关闭请求协议
+                  wmatom[WMDelete] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+                  // 窗口状态协议
+                  wmatom[WMState] = XInternAtom(dpy, "WM_STATE", False);
+                  // 获取焦点协议
+                  wmatom[WMTakeFocus] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+                  // 窗口管理器支持的扩展协议
+                  netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
+                  // 窗口的名称
+                  netatom[NetWMName] = XInternAtom(dpy, "_NET_WM_NAME", False);
+                  // 窗口状态扩展协议，用于管理窗口的状态
+                  netatom[NetWMState] = XInternAtom(dpy, "_NET_WM_STATE", False);
+                  // 用于检查窗口管理器是否运行
+                  netatom[NetWMCheck] = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
+                  // 全屏窗口状态
+                  netatom[NetWMFullscreen] = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+                  // 当前活动的窗口
+                  netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+                  // 窗口类型
+                  netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+                  // 对话框窗口类型
+                  netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+                  // 获取当前运行的客户端应用程序列表
+                  netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
+
+                  // 初始化鼠标
+                  // 普通鼠标
+                  cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
+                  // 调整窗口大小的鼠标
+                  cursor[CurResize] = drw_cur_create(drw, XC_sizing);
+                  // 移动窗口的鼠标
+                  cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+
+                  /* init appearance */
+                  // 初始化外观,(创建颜色集合)
+                  scheme = (Clr **)ecalloc(LENGTH(colors), sizeof(Clr *));
+                  for (int i = 0; i < LENGTH(colors); i++)
+                  scheme[i] = drw_scm_create(drw, colors[i], 3);
+
+                  /* init bars */
+                  // 更新状态栏
+                  updatebars();
+
+                  // 更新状态栏的文本信息
+                  updatestatus();
+                  /* supporting window for NetWMCheck */
+                  // NetWMCheck的支持窗口
+                  // 创建一个大小为 1x1 像素，位置在坐标 (0, 0)，不可见的窗口
+                  wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
+                  // 窗口的属性设置为NET_WM_CHECK类型，值设置为wmcheckwin，这是为了支持EWMH
+                  XChangeProperty(dpy, wmcheckwin, netatom[NetWMCheck], XA_WINDOW, 32,
+                  PropModeReplace, (unsigned char *) &wmcheckwin, 1);
+                  // 窗口的属性设置为 _NET_WM_NAME 类型，并将其值设置为 "dwm"，表示窗口管理器的名称。
+                  XChangeProperty(dpy, wmcheckwin, netatom[NetWMName], utf8string, 8,
+                  PropModeReplace, (unsigned char *) "dwm", 3);
+                  //将窗口 wmcheckwin 的信息存储为一个属性，属性的类型是 _NET_WM_CHECK，属性的数据类型是窗口类型（XA_WINDOW），并且将其完全替换根窗口的相应属性。通常，这样的属性用于与窗口管理器通信，以支持特定的窗口管理功能或协议，例如 EWMH。
+                  XChangeProperty(dpy, root, netatom[NetWMCheck], XA_WINDOW, 32,
+                  PropModeReplace, (unsigned char *) &wmcheckwin, 1);
+                  /* EWMH support per view */
+                  //     将根窗口的属性设置为 _NET_SUPPORTED 类型，其值是一个包含各种 Atom 类型的数组，以表明窗口管理器支持的 EWMH 特性。
+                  XChangeProperty(dpy, root, netatom[NetSupported], XA_ATOM, 32,
+                  PropModeReplace, (unsigned char *) netatom, NetLast);
+                  // 删除根窗口的 _NET_CLIENT_LIST 属性，以便窗口管理器自行维护这个属性。
+                  XDeleteProperty(dpy, root, netatom[NetClientList]);
+                  /* select events */
+                  //为根窗口设置事件监听和光标属性：
+                  //
+                  //    设置光标为正常状态下的光标形状。
+                  //    设置事件掩码，以便根窗口能够监听并处理多种事件，包括窗口结构变化、鼠标按钮按下、鼠标指针移动、鼠标进入和离开窗口、窗口属性变化等。
+                  //    使用 XChangeWindowAttributes 函数和 XSelectInput 函数分别为根窗口设置事件属性和事件监听。
+                  wa.cursor = cursor[CurNormal]->cursor;
+                  /*SubstructureRedirectMask：表示子窗口重定向事件，通常用于捕获窗口创建和销毁事件。
+                  SubstructureNotifyMask：表示子窗口通知事件，通常用于捕获子窗口的改变事件，如改变大小或移动。
+                  ButtonPressMask：表示鼠标按钮按下事件，用于捕获鼠标按键的点击事件。
+                  PointerMotionMask：表示鼠标指针移动事件，用于捕获鼠标指针的移动。
+                  EnterWindowMask：表示鼠标指针进入窗口事件。
+                  LeaveWindowMask：表示鼠标指针离开窗口事件。
+                  StructureNotifyMask：表示窗口结构变化事件，用于捕获窗口的改变，如创建、销毁、映射和取消映射。
+                  PropertyChangeMask：表示属性变化事件，用于捕获窗口属性的改变。*/
+                  wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask
+                  |ButtonPressMask|PointerMotionMask|EnterWindowMask
+                  |LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
+                  // 更改根窗口的属性,参数3表示要更改的属性标志，包括事件掩码和光标
+                  XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
+                  // 为根窗口（root）设置事件监听
+                  XSelectInput(dpy, root, wa.event_mask);
+                  //捕获键盘快捷键的输入事件，以便窗口管理器可以响应用户的键盘操作。
+                  grabkeys();
+                  //置窗口管理器的焦点
+                  focus(NULL);
+                  }
+
+/*******************************************************************************
+ * 退出dwm时释放所有资源
+*******************************************************************************/
+void Dwm::CleanUp(void) {
+                    Arg a = {.ui = (unsigned int)~0};
+                    Layout foo = { "", NULL };
+                    Monitor *m;
+                    size_t i;
+
+                    // 将当前桌面视图切换到一个默认的视图，以确保所有客户端都被移动到一个可见的桌面
+                    view(&a);
+                    // 将当前的layout置空
+                    selmon->lt[selmon->sellt] = &foo;
+                    // 遍历所有监视器，如果还是窗口，就取消管理这些窗口
+                    for (m = mons; m; m = m->next)
+                    while (m->stack)
+                    unmanage(m->stack, 0);
+                    // 取消注册dwm监听的所有键盘快捷键
+                    XUngrabKey(dpy, AnyKey, AnyModifier, root);
+                    // 循环释放所有监视器
+                    while (mons)
+                    cleanupmon(mons);
+                    // 释放所有光标
+                    for (i = 0; i < CurLast; i++)
+                    drw_cur_free(drw, cursor[i]);
+                    // 释放所有颜色方案
+                    for (i = 0; i < LENGTH(colors); i++)
+                    free(scheme[i]);
+                    // 释放颜色方案数组
+                    free(scheme);
+                    // 销毁dwm使用的用于支持_NET_SUPPORTING_CHECK
+                    XDestroyWindow(dpy, wmcheckwin);
+                    // 释放drw
+                    drw_free(drw);
+                    // 确保所有未完成的X协议请求都被处理
+                    XSync(dpy, False);
+                    // 将输入焦点设置为根窗口
+                    XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
+                    // 删除 _NET_ACTIVE_WINDOW属性
+                    XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
+                    }
+
+/*******************************************************************************
+ * 扫描所有的窗口，并根据是否是辅助窗口来跳过或者调用manage函数
+*******************************************************************************/
+void Dwm::Scan(void) {
+                 unsigned int i, num;
+                 Window d1, d2, *wins = NULL;
+                 XWindowAttributes wa;
+
+                 // 查询根窗口下的所有窗口，并将结果存储在wins数组中,同时获取窗口的数量num
+                 if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
+                 for (i = 0; i < num; i++) {
+                 // 获取wins[i]窗口的属性信息,存储在wa中
+                 if (!XGetWindowAttributes(dpy, wins[i], &wa)
+                 // 如果窗口的override_redirect属性为真，或者窗口具有XGetTransientForHint提示（通常用于指示窗口是某个主窗口的辅助窗口），则跳过该窗口
+                 || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
+                 continue;
+                 // 如果窗口的状态是可视状态 或者 窗口的状态为最小化状态，则调用manage函数对窗口进行管理
+                 if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
+                 // 管理窗口,进行重排等操作
+                 manage(wins[i], &wa);
+                 }
+                 // 检查窗口的属性和状态来判断是否要管理该窗口
+                 for (i = 0; i < num; i++) { /* now the transients */
+                 // 将窗口的信息存储在wa中
+                 if (!XGetWindowAttributes(dpy, wins[i], &wa))
+                 continue;
+                 //
+                 if (XGetTransientForHint(dpy, wins[i], &d1)
+                 && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
+                 manage(wins[i], &wa);
+                 }
+                 if (wins)
+                 XFree(wins);
+                 }
+                 }
+
+Dwm::Dwm() {
+    CheckOtherWm();
+    SetUp();
+    Scan();
+}
+
+
+Dwm::~Dwm() {
+    CleanUp();
+}
+
+/*******************************************************************************
+* dwm窗口的主事件循环
+*******************************************************************************/
+void Dwm::Run(void) {
+                XEvent ev;
+                /* main event loop */
+                // 确保X服务器中的事件和窗口状态已经与客户端（dwm）同步
+                // 可以确保之后的事件处理不会与之前的事件状态混淆
+                XSync(dpy, False);
+                // 正在运行 并且 阻塞地获取下一个事件
+                while (running && !XNextEvent(dpy, &ev))
+                // 如果事件的类型处理方法(函数指针)不为null
+                if (handler[ev.type])
+                // 处理这个方法
+                handler[ev.type](&ev); /* call handler */
+                }
+
+
 
 int main(int argc, char *argv[]) {
 
@@ -2461,15 +2410,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "warning: no locale support" << std::endl;
 	if (!(dpy = XOpenDisplay(NULL)))
 		Die("dwm: cannot open display");
-	checkotherwm();
-	setup();
-#ifdef __OpenBSD__
-	if (pledge("stdio rpath proc exec", NULL) == -1)
-		Die("pledge");
-#endif /* __OpenBSD__ */
-	scan();
-	run();
-	cleanup();
+    Dwm dwm;
+	dwm.Run();
 	XCloseDisplay(dpy);
 	return EXIT_SUCCESS;
 }
