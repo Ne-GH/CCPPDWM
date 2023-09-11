@@ -118,6 +118,66 @@ void Client::configure() {
 }
 
 /*******************************************************************************
+ * 更新窗口的标题
+*******************************************************************************/
+void Client::updatetitle() {
+    // 从窗口的_NET_WM_NAME属性中获取窗口的名称并存储到c->name中
+    if (!gettextprop(win, netatom[NetWMName], name, sizeof name))
+        gettextprop(win, XA_WM_NAME, name, sizeof name);
+    // 如果没有获取到窗口的名称,将窗口的名称设置为“broken”
+    if (name[0] == '\0') /* hack to mark broken clients,标记损坏的客户端 */
+        strcpy(name, broken);
+}
+
+void Client::updatewindowtype() {
+
+}
+
+void Client::updatewmhints() {
+
+}
+
+void Client::setfocus() {
+
+}
+
+void Client::showhide() {
+
+}
+
+void Client::updatesizehints() {
+
+}
+
+void Client::attachstack() {
+
+}
+
+void Client::applyrules() {
+
+}
+
+void Client::attach() {
+
+}
+
+void Client::detach() {
+
+}
+
+void Client::detachstack() {
+
+}
+
+void Client::focus() {
+
+}
+
+void Client::pop() {
+
+}
+
+/*******************************************************************************
  * 根据窗口规则设置窗口的属性
 *******************************************************************************/
 void applyrules(Client *c) {
@@ -931,7 +991,7 @@ void manage(Window w, XWindowAttributes *wa) {
 	c->oldbw = wa->border_width;
 
     // 更新窗口的标题
-	updatetitle(c);
+    c->updatetitle();
     // 先检查窗口w是否具有传输窗口提示（一个对话框是主窗口的传输窗口），如果有获取句柄到trans
     // 并尝试找到这个窗口
 	if (XGetTransientForHint(dpy, w, &trans) && (t = Client::wintoclient(trans))) {
@@ -1169,7 +1229,7 @@ propertynotify(XEvent *e)
 			break;
 		}
 		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
-			updatetitle(c);
+            c->updatetitle();
 			if (c == c->mon->sel)
 				drawbar(c->mon);
 		}
@@ -1888,17 +1948,6 @@ void updatestatus(void) {
 	drawbar(selmon);
 }
 
-/*******************************************************************************
- * 更新窗口的标题
-*******************************************************************************/
-void updatetitle(Client *c) {
-    // 从窗口的_NET_WM_NAME属性中获取窗口的名称并存储到c->name中
-	if (!gettextprop(c->win, netatom[NetWMName], c->name, sizeof c->name))
-		gettextprop(c->win, XA_WM_NAME, c->name, sizeof c->name);
-    // 如果没有获取到窗口的名称,将窗口的名称设置为“broken”
-	if (c->name[0] == '\0') /* hack to mark broken clients,标记损坏的客户端 */
-		strcpy(c->name, broken);
-}
 
 /*******************************************************************************
  * 更新窗口属性

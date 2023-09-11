@@ -48,5 +48,17 @@ public:
      * 设置特定窗口的几何属性,重新绘制特定窗口
     *******************************************************************************/
     void configure();
-
+    void updatetitle();
+    void updatewindowtype();
+    void updatewmhints();
+    void setfocus();
+    void showhide();
+    void updatesizehints();
+    void attachstack();
+    void applyrules();
+    void attach();
+    void detach();
+    void detachstack();
+    void focus();
+    void pop();
 };
