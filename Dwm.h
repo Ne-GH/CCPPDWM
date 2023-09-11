@@ -179,7 +179,6 @@ static void zoom(const Arg *arg);
 
 
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
-static Atom getatomprop(Client *c, Atom prop);
 
 static void sendmon(Client *c, Monitor *m);
 

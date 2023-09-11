@@ -60,9 +60,14 @@ public:
     void pop();
     void updatesizehints();
 
-
     void unmanage(int destroyed);
     int sendevent(Atom proto);
+    void setclientstate(long state);
+    void setfullscreen(int fullscreen);
+    void seturgent(int urg);
+    void grabbuttons(int focused);
+    Atom getatomprop(Atom prop);
+
 
     void focus();
     void showhide();
@@ -70,10 +75,5 @@ public:
     Client *nexttiled();
     void unfocus( int setfocus);
     void sendmon(Monitor *m);
-    void setclientstate(long state);
-    void setfullscreen(int fullscreen);
-    void seturgent(int urg);
-    void grabbuttons(int focused);
     int applysizehints(int *x, int *y, int *w, int *h, int interact);
-    Atom getatomprop(Atom prop);
 };

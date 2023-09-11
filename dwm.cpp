@@ -265,8 +265,8 @@ void Client::updatetitle() {
  * 更新窗口属性
 *******************************************************************************/
 void Client::updatewindowtype() {
-    Atom state = ::getatomprop(this, netatom[NetWMState]);
-    Atom wtype = ::getatomprop(this, netatom[NetWMWindowType]);
+    Atom state = getatomprop(netatom[NetWMState]);
+    Atom wtype = getatomprop(netatom[NetWMWindowType]);
 
     if (state == netatom[NetWMFullscreen])
         setfullscreen(1);
@@ -567,7 +567,17 @@ int Client::applysizehints(int *x, int *y, int *w, int *h, int interact) {
 }
 
 Atom Client::getatomprop(Atom prop) {
-    return 0;
+    int di;
+    unsigned long dl;
+    unsigned char *p = NULL;
+    Atom da, atom = None;
+
+    if (XGetWindowProperty(dpy, win, prop, 0L, sizeof atom, False, XA_ATOM,
+                           &da, &di, &dl, &dl, &p) == Success && p) {
+        atom = *(Atom *)p;
+        XFree(p);
+    }
+    return atom;
 }
 
 
@@ -1104,21 +1114,6 @@ focusstack(const Arg *arg)
 	}
 }
 
-Atom
-getatomprop(Client *c, Atom prop)
-{
-	int di;
-	unsigned long dl;
-	unsigned char *p = NULL;
-	Atom da, atom = None;
-
-	if (XGetWindowProperty(dpy, c->win, prop, 0L, sizeof atom, False, XA_ATOM,
-		&da, &di, &dl, &dl, &p) == Success && p) {
-		atom = *(Atom *)p;
-		XFree(p);
-	}
-	return atom;
-}
 
 int
 getrootptr(int *x, int *y)
