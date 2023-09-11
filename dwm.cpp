@@ -349,7 +349,10 @@ void Client::attach() {
 }
 
 void Client::detach() {
+    Client **tc;
 
+    for (tc = &mon->clients; *tc && *tc != this; tc = &(*tc)->next);
+    *tc = next;
 }
 
 void Client::detachstack() {
@@ -694,14 +697,7 @@ void destroynotify(XEvent *e) {
 		unmanage(c, 1);
 }
 
-void
-detach(Client *c)
-{
-	Client **tc;
 
-	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
-	*tc = c->next;
-}
 
 void
 detachstack(Client *c)
@@ -1329,7 +1325,7 @@ nexttiled(Client *c)
 void
 pop(Client *c)
 {
-	detach(c);
+	c->detach();
 	c->attach();
 	focus(c);
 	arrange(c->mon);
@@ -1508,7 +1504,7 @@ sendmon(Client *c, Monitor *m)
 	if (c->mon == m)
 		return;
 	unfocus(c, 1);
-	detach(c);
+	c->detach();
 	detachstack(c);
 	c->mon = m;
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
@@ -1794,7 +1790,7 @@ unmanage(Client *c, int destroyed)
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
-	detach(c);
+	c->detach();
 	detachstack(c);
 	if (!destroyed) {
 		wc.border_width = c->oldbw;

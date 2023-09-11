@@ -55,9 +55,8 @@ public:
     void attachstack();
     void applyrules();
     void attach();
-
-
     void detach();
+
     void detachstack();
     void focus();
     void pop();
