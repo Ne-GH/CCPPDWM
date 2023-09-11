@@ -53,7 +53,6 @@ public:
     void updatewmhints();
     void setfocus();
 
-    void showhide();
     void updatesizehints();
     void attachstack();
     void applyrules();
@@ -62,4 +61,8 @@ public:
     void detachstack();
     void focus();
     void pop();
+
+
+
+    void showhide();
 };
