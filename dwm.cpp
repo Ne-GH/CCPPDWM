@@ -250,11 +250,11 @@ void Client::updatetitle() {
  * 更新窗口属性
 *******************************************************************************/
 void Client::updatewindowtype() {
-    Atom state = getatomprop(this, netatom[NetWMState]);
-    Atom wtype = getatomprop(this, netatom[NetWMWindowType]);
+    Atom state = ::getatomprop(this, netatom[NetWMState]);
+    Atom wtype = ::getatomprop(this, netatom[NetWMWindowType]);
 
     if (state == netatom[NetWMFullscreen])
-        setfullscreen(this, 1);
+        ::setfullscreen(this, 1);
     if (wtype == netatom[NetWMWindowTypeDialog])
         isfloating = 1;
 }
@@ -282,7 +282,7 @@ void Client::setfocus() {
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *) &(win), 1);
     }
-    sendevent(this, wmatom[WMTakeFocus]);
+    ::sendevent(this, wmatom[WMTakeFocus]);
 }
 
 void Client::showhide() {
@@ -418,6 +418,49 @@ void Client::pop() {
     arrange(this->mon);
 }
 
+Client *Client::nexttiled() {
+    return nullptr;
+}
+
+void Client::unfocus(int setfocus) {
+
+}
+
+void Client::unmanage(int destroyed) {
+
+}
+
+int Client::sendevent(Atom proto) {
+    return 0;
+}
+
+void Client::sendmon(Monitor *m) {
+
+}
+
+void Client::setclientstate(long state) {
+
+}
+
+void Client::setfullscreen(int fullscreen) {
+
+}
+
+void Client::seturgent(int urg) {
+
+}
+
+void Client::grabbuttons(int focused) {
+
+}
+
+int Client::applysizehints(int *x, int *y, int *w, int *h, int interact) {
+    return 0;
+}
+
+Atom Client::getatomprop(Atom prop) {
+    return 0;
+}
 
 
 int

@@ -57,10 +57,22 @@ public:
     void attach();
     void detach();
     void detachstack();
+    void pop();
+    void updatesizehints();
 
 
     void focus();
-    void pop();
-    void updatesizehints();
     void showhide();
+
+    Client *nexttiled();
+    void unfocus( int setfocus);
+    void unmanage(int destroyed);
+    int sendevent(Atom proto);
+    void sendmon(Monitor *m);
+    void setclientstate(long state);
+    void setfullscreen(int fullscreen);
+    void seturgent(int urg);
+    void grabbuttons(int focused);
+    int applysizehints(int *x, int *y, int *w, int *h, int interact);
+    Atom getatomprop(Atom prop);
 };
