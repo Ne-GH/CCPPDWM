@@ -116,6 +116,7 @@ xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern)
 	XftFont *xfont = NULL;
 	FcPattern *pattern = NULL;
 
+
 	if (fontname) {
 		/* Using the pattern found at font->xfont->pattern does not yield the
 		 * same substitution results as using the pattern returned by

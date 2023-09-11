@@ -1,8 +1,33 @@
 /* See LICENSE file for copyright and license details. */
+// 颜色
+typedef XftColor Clr;
+struct Fnt;
+
+// 绘图上下文
+struct Drw{
+    unsigned int w, h;
+    Display *dpy;
+    int screen;
+    Window root;
+    Drawable drawable;
+    GC gc;
+    Clr *scheme;
+    Fnt *fonts;
+};
+/* Drawable abstraction */
+Drw *drw_create(Display *dpy, int screen, Window win, unsigned int w, unsigned int h);
+void drw_resize(Drw *drw, unsigned int w, unsigned int h);
+void drw_free(Drw *drw);
+
+
+
 // 鼠标
 struct Cur{
 	Cursor cursor;
 };
+/* Cursor abstraction */
+Cur *drw_cur_create(Drw *drw, int shape);
+void drw_cur_free(Drw *drw, Cur *cursor);
 
 // 字体
 struct Fnt {
@@ -12,29 +37,6 @@ struct Fnt {
 	FcPattern *pattern;
 	struct Fnt *next;
 };
-
-enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
-
-// 颜色
-typedef XftColor Clr;
-
-// 绘图上下文
-struct Drw{
-	unsigned int w, h;
-	Display *dpy;
-	int screen;
-	Window root;
-	Drawable drawable;
-	GC gc;
-	Clr *scheme;
-	Fnt *fonts;
-};
-
-/* Drawable abstraction */
-Drw *drw_create(Display *dpy, int screen, Window win, unsigned int w, unsigned int h);
-void drw_resize(Drw *drw, unsigned int w, unsigned int h);
-void drw_free(Drw *drw);
-
 /* Fnt abstraction */
 Fnt *drw_fontset_create(Drw* drw, const char *fonts[], size_t fontcount);
 void drw_fontset_free(Fnt* set);
@@ -42,13 +44,12 @@ unsigned int drw_fontset_getwidth(Drw *drw, const char *text);
 unsigned int drw_fontset_getwidth_clamp(Drw *drw, const char *text, unsigned int n);
 void drw_font_getexts(Fnt *font, const char *text, unsigned int len, unsigned int *w, unsigned int *h);
 
+
+enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
 /* Colorscheme abstraction */
 void drw_clr_create(Drw *drw, Clr *dest, const char *clrname);
 Clr *drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount);
 
-/* Cursor abstraction */
-Cur *drw_cur_create(Drw *drw, int shape);
-void drw_cur_free(Drw *drw, Cur *cursor);
 
 /* Drawing context manipulation */
 void drw_setfontset(Drw *drw, Fnt *set);
