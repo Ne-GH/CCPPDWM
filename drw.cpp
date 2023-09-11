@@ -110,25 +110,25 @@ drw_free(Drw *drw)
  * drw_fontset_create instead.
  */
 static Fnt *
-xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern)
+xfont_create(Drw *drw,std::string fontname, FcPattern *fontpattern)
 {
 	Fnt *font;
 	XftFont *xfont = NULL;
 	FcPattern *pattern = NULL;
 
 
-	if (fontname) {
+	if (fontname != "") {
 		/* Using the pattern found at font->xfont->pattern does not yield the
 		 * same substitution results as using the pattern returned by
 		 * FcNameParse; using the latter results in the desired fallback
 		 * behaviour whereas the former just results in missing-character
 		 * rectangles being drawn, at least with some fonts. */
-		if (!(xfont = XftFontOpenName(drw->dpy, drw->screen, fontname))) {
-			fprintf(stderr, "error, cannot load font from name: '%s'\n", fontname);
+		if (!(xfont = XftFontOpenName(drw->dpy, drw->screen, fontname.c_str()))) {
+			fprintf(stderr, "error, cannot load font from name: '%s'\n", fontname.c_str());
 			return NULL;
 		}
-		if (!(pattern = FcNameParse((FcChar8 *) fontname))) {
-			fprintf(stderr, "error, cannot parse font name to pattern: '%s'\n", fontname);
+		if (!(pattern = FcNameParse((FcChar8 *) fontname.c_str()))) {
+			fprintf(stderr, "error, cannot parse font name to pattern: '%s'\n", fontname.c_str());
 			XftFontClose(drw->dpy, xfont);
 			return NULL;
 		}
@@ -168,11 +168,11 @@ xfont_free(Fnt *font)
  * 参数3：字体数组的长度(字体数量)
  * 返回值字体合集是一个链表
 *******************************************************************************/
-Fnt* drw_fontset_create(Drw* drw, const char *fonts[], size_t fontcount) {
+Fnt* drw_fontset_create(Drw* drw, std::vector<std::string>fonts, size_t fontcount) {
     // 当前处理的字体，返回的字体集合
 	Fnt *cur, *ret = nullptr;
 
-	if (!drw || !fonts)
+	if (!drw || !fonts.size())
 		return nullptr;
 
 	for (int i = 1; i <= fontcount; i++) {

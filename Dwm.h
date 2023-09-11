@@ -16,6 +16,8 @@
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
 
+#include <vector>
+#include <string>
 
 /* macros */
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
