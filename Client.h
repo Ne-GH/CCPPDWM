@@ -52,17 +52,15 @@ public:
     void updatewindowtype();
     void updatewmhints();
     void setfocus();
-
-    void updatesizehints();
     void attachstack();
     void applyrules();
     void attach();
+
+
     void detach();
     void detachstack();
     void focus();
     void pop();
-
-
-
+    void updatesizehints();
     void showhide();
 };
