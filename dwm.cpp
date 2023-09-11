@@ -614,7 +614,21 @@ Monitor *Monitor::createmon(void) {
 }
 
 Monitor *Monitor::dirtomon(int dir) {
-    return nullptr;
+    Monitor *m = nullptr;
+
+    if (dir > 0) {
+        if (!(m = selmon->next))
+            m = mons;
+    }
+    else if (selmon == mons) {
+        for (m = mons; m->next; m = m->next)
+            ;
+    }
+    else {
+        for (m = mons; m->next != selmon; m = m->next)
+            ;
+    }
+    return m;
 }
 
 void Monitor::drawbar() {
@@ -967,20 +981,7 @@ void destroynotify(XEvent *e) {
 
 
 
-Monitor *
-dirtomon(int dir)
-{
-	Monitor *m = NULL;
 
-	if (dir > 0) {
-		if (!(m = selmon->next))
-			m = mons;
-	} else if (selmon == mons)
-		for (m = mons; m->next; m = m->next);
-	else
-		for (m = mons; m->next != selmon; m = m->next);
-	return m;
-}
 
 /*******************************************************************************
  * 重绘特定监视器的状态栏
@@ -1135,7 +1136,7 @@ focusmon(const Arg *arg)
 
 	if (!mons->next)
 		return;
-	if ((m = dirtomon(arg->i)) == selmon)
+	if ((m = Monitor::dirtomon(arg->i)) == selmon)
 		return;
 	unfocus(selmon->sel, 0);
 	selmon = m;
@@ -1815,7 +1816,7 @@ tagmon(const Arg *arg)
 {
 	if (!selmon->sel || !mons->next)
 		return;
-	sendmon(selmon->sel, dirtomon(arg->i));
+	sendmon(selmon->sel, Monitor::dirtomon(arg->i));
 }
 
 void

@@ -50,7 +50,7 @@ struct Monitor {
     void arrangemon();
     void cleanupmon();
     Monitor *createmon(void);
-    Monitor *dirtomon(int dir);
+    static Monitor *dirtomon(int dir);
     void drawbar();
     void monocle();
     Monitor *recttomon(int x, int y, int w, int h);
