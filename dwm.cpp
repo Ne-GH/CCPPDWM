@@ -177,7 +177,8 @@ void Client::updatesizehints() {
 }
 
 void Client::attachstack() {
-
+    snext = mon->stack;
+    mon->stack = this;
 }
 
 void Client::applyrules() {
@@ -355,12 +356,7 @@ attach(Client *c)
 	c->mon->clients = c;
 }
 
-void
-attachstack(Client *c)
-{
-	c->snext = c->mon->stack;
-	c->mon->stack = c;
-}
+
 
 /*******************************************************************************
  * 处理鼠标点击事件
@@ -749,7 +745,7 @@ focus(Client *c)
 		if (c->isurgent)
 			seturgent(c, 0);
 		detachstack(c);
-		attachstack(c);
+		c->attachstack();
 		grabbuttons(c, 1);
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
 		c->setfocus();
@@ -1063,7 +1059,7 @@ void manage(Window w, XWindowAttributes *wa) {
 
     // 将窗口添加到监视器的窗口链表中,确保正确的层叠顺序
 	attach(c);
-	attachstack(c);
+	c->attachstack();
     // 将窗口 c->win 添加到根窗口的 _NET_CLIENT_LIST 属性中，这是 EWMH（扩展窗口管理器提示协议）的一部分，用于跟踪所有客户端窗口。
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
@@ -1406,7 +1402,7 @@ sendmon(Client *c, Monitor *m)
 	c->mon = m;
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	attach(c);
-	attachstack(c);
+	c->attachstack();
 	focus(NULL);
 	arrange(NULL);
 }
@@ -1866,7 +1862,7 @@ int updategeom(void) {
 				detachstack(c);
 				c->mon = mons;
 				attach(c);
-				attachstack(c);
+				c->attachstack();
 			}
 			if (m == selmon)
 				selmon = mons;
