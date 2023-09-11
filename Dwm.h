@@ -179,7 +179,6 @@ static void zoom(const Arg *arg);
 
 
 static void focus(Client *c);
-static void pop(Client *c);
 static void updatesizehints(Client *c);
 
 static Client *nexttiled(Client *c);

@@ -374,7 +374,10 @@ void Client::focus() {
 }
 
 void Client::pop() {
-
+    detach();
+    attach();
+    ::focus(this);
+    arrange(this->mon);
 }
 
 
@@ -1320,14 +1323,7 @@ nexttiled(Client *c)
 	return c;
 }
 
-void
-pop(Client *c)
-{
-	c->detach();
-	c->attach();
-	focus(c);
-	arrange(c->mon);
-}
+
 
 void
 propertynotify(XEvent *e)
@@ -2120,7 +2116,7 @@ zoom(const Arg *arg)
 		return;
 	if (c == nexttiled(selmon->clients) && !(c = nexttiled(c->next)))
 		return;
-	pop(c);
+	c->pop();
 }
 
 /*******************************************************************************
