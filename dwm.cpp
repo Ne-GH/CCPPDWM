@@ -544,7 +544,22 @@ void Client::seturgent(int urg) {
 }
 
 void Client::grabbuttons(int focused) {
-
+    updatenumlockmask();
+    {
+        unsigned int i, j;
+        unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask|LockMask };
+        XUngrabButton(dpy, AnyButton, AnyModifier, win);
+        if (!focused)
+            XGrabButton(dpy, AnyButton, AnyModifier, win, False,
+                        BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
+        for (i = 0; i < LENGTH(buttons); i++)
+            if (buttons[i].click == ClkClientWin)
+                for (j = 0; j < LENGTH(modifiers); j++)
+                    XGrabButton(dpy, buttons[i].button,
+                                buttons[i].mask | modifiers[j],
+                                win, False, BUTTONMASK,
+                                GrabModeAsync, GrabModeSync, None, None);
+    }
 }
 
 int Client::applysizehints(int *x, int *y, int *w, int *h, int interact) {
@@ -1028,7 +1043,7 @@ focus(Client *c)
 			c->seturgent(0);
 		c->detachstack();
 		c->attachstack();
-		grabbuttons(c, 1);
+		c->grabbuttons(1);
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
 		c->setfocus();
 	} else {
@@ -1156,26 +1171,7 @@ gettextprop(Window w, Atom atom, char *text, unsigned int size)
 	return 1;
 }
 
-void
-grabbuttons(Client *c, int focused)
-{
-	updatenumlockmask();
-	{
-		unsigned int i, j;
-		unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask|LockMask };
-		XUngrabButton(dpy, AnyButton, AnyModifier, c->win);
-		if (!focused)
-			XGrabButton(dpy, AnyButton, AnyModifier, c->win, False,
-				BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
-		for (i = 0; i < LENGTH(buttons); i++)
-			if (buttons[i].click == ClkClientWin)
-				for (j = 0; j < LENGTH(modifiers); j++)
-					XGrabButton(dpy, buttons[i].button,
-						buttons[i].mask | modifiers[j],
-						c->win, False, BUTTONMASK,
-						GrabModeAsync, GrabModeSync, None, None);
-	}
-}
+
 
 /*******************************************************************************
  * 捕获键盘快捷键的输入事件，以便窗口管理器可以响应用户的键盘操作。
@@ -1317,7 +1313,7 @@ void manage(Window w, XWindowAttributes *wa) {
 	c->updatewmhints();
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
     // 不激活按钮事件,用于支持鼠标操作
-	grabbuttons(c, 0);
+	c->grabbuttons(0);
 	if (!c->isfloating)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating)
@@ -1856,7 +1852,7 @@ unfocus(Client *c, int setfocus)
 {
 	if (!c)
 		return;
-	grabbuttons(c, 0);
+	c->grabbuttons(0);
 	XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
 	if (setfocus) {
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
