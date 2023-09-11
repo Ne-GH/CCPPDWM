@@ -178,8 +178,6 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static void setfullscreen(Client *c, int fullscreen);
-static void seturgent(Client *c, int urg);
 static void grabbuttons(Client *c, int focused);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static Atom getatomprop(Client *c, Atom prop);

@@ -526,8 +526,21 @@ void Client::setfullscreen(int fullscreen) {
     }
 }
 
+/*******************************************************************************
+ * 将窗口标记为紧急窗口。
+ * 如果 urg 为非零（通常为 1），则窗口被标记为紧急窗口；如果 urg 为零，窗口将取消紧急窗口标记。
+*******************************************************************************/
 void Client::seturgent(int urg) {
-
+    XWMHints *wmh;
+    isurgent = urg;
+    // 检查是否成功获取窗口提示（XWMHints）的结构体。
+    if (!(wmh = XGetWMHints(dpy, win)))
+        return;
+    // 传入的 urg 值来更新窗口提示结构体的 flags 字段，以添加或取消紧急窗口提示标志。如果 urg 为非零，表示窗口应标记为紧急窗口，就会设置 XUrgencyHint 标志；如果 urg 为零，表示窗口应取消紧急窗口标志，就会将 XUrgencyHint 标志从 flags 中移除。
+    wmh->flags = urg ? (wmh->flags | XUrgencyHint) : (wmh->flags & ~XUrgencyHint);
+    XSetWMHints(dpy, win, wmh);
+    // 将更新后的窗口提示结构体重新设置到窗口 c->win 上，以便通知窗口管理器或窗口管理器的用户界面环境有关窗口的重要性。
+    XFree(wmh);
 }
 
 void Client::grabbuttons(int focused) {
@@ -747,7 +760,7 @@ void clientmessage(XEvent *e) {
         // 检查客户端窗口是否不是当前选中监视器 selmon 上的选中窗口，并且窗口不是紧急窗口。
 		if (c != selmon->sel && !c->isurgent)
             // 将窗口 c 设置为紧急窗口，以突出显示它。
-			seturgent(c, 1);
+			c->seturgent(1);
 	}
 }
 
@@ -1012,7 +1025,7 @@ focus(Client *c)
 		if (c->mon != selmon)
 			selmon = c->mon;
 		if (c->isurgent)
-			seturgent(c, 0);
+			c->seturgent(0);
 		c->detachstack();
 		c->attachstack();
 		grabbuttons(c, 1);
@@ -1692,23 +1705,7 @@ setmfact(const Arg *arg)
 
 
 
-/*******************************************************************************
- * 将窗口标记为紧急窗口。
- * 如果 urg 为非零（通常为 1），则窗口被标记为紧急窗口；如果 urg 为零，窗口将取消紧急窗口标记。
-*******************************************************************************/
-void seturgent(Client *c, int urg) {
-	XWMHints *wmh;
 
-	c->isurgent = urg;
-    // 检查是否成功获取窗口提示（XWMHints）的结构体。
-	if (!(wmh = XGetWMHints(dpy, c->win)))
-		return;
-    // 传入的 urg 值来更新窗口提示结构体的 flags 字段，以添加或取消紧急窗口提示标志。如果 urg 为非零，表示窗口应标记为紧急窗口，就会设置 XUrgencyHint 标志；如果 urg 为零，表示窗口应取消紧急窗口标志，就会将 XUrgencyHint 标志从 flags 中移除。
-	wmh->flags = urg ? (wmh->flags | XUrgencyHint) : (wmh->flags & ~XUrgencyHint);
-	XSetWMHints(dpy, c->win, wmh);
-    // 将更新后的窗口提示结构体重新设置到窗口 c->win 上，以便通知窗口管理器或窗口管理器的用户界面环境有关窗口的重要性。
-	XFree(wmh);
-}
 
 /*******************************************************************************
  * 如果可见就隐藏，如果不可见就显示
