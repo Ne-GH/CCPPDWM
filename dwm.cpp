@@ -7,165 +7,12 @@
 
 #include <string>
 
-
-
 #include "Dwm.h"
 #include "Client.h"
 #include "Monitor.h"
 #include "drw.h"
 #include "util.h"
 
-/* macros */
-#define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
-#define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
-#define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
-                               * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
-#define ISVISIBLE(C)            ((C->tags & C->mon->tagset[C->mon->seltags]))
-#define LENGTH(X)               (sizeof X / sizeof X[0])
-#define MOUSEMASK               (BUTTONMASK|PointerMotionMask)
-#define WIDTH(X)                ((X)->w + 2 * (X)->bw)
-#define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
-#define TAGMASK                 ((1 << LENGTH(tags)) - 1)
-#define TEXTW(X)                (drw_fontset_getwidth(drw, (X)) + lrpad)
-
-/* enums */
-enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel }; /* color schemes */
-enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
-       NetWMFullscreen, NetActiveWindow, NetWMWindowType,
-       NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
-enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
-enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
-       ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
-
-// 参数
-union Arg {
-	int i;
-	unsigned int ui;
-	float f;
-	const void *v;
-};
-
-// 鼠标事件
-struct Button {
-	unsigned int click;     // 点击区域
-	unsigned int mask;      // 键盘掩码
-	unsigned int button;    // 按键编号
-	void (*func)(const Arg *arg); // 处理鼠标事件的函数
-	const Arg arg;// func的参数
-};
-
-struct Monitor;
-struct Client;
-
-
-struct Key{
-	unsigned int mod;   // 修饰键，ctrl | shift | alt 等
-	KeySym keysym;// 按键
-	void (*func)(const Arg *);// 处理这组按键的函数
-	const Arg arg;// 参数
-};
-
-struct Layout;
-
-
-
-
-
-struct Rule{
-    const char *_class; //这是用于区分窗口类型的字符串
-	const char *instance;//通常与类别一起用于更精确地区分窗口。
-	const char *title;//用于匹配窗口的标题。
-	unsigned int tags;//指定要分配给窗口的标签，使用二进制掩码的形式表示。
-	int isfloating;//表示该窗口应该被视为浮动窗口。
-	int monitor;//监视器索引。指定要将窗口分配到哪个监视器上，通过监视器的索引进行指定。
-};
-
-/* function declarations */
-static void applyrules(Client *c);
-static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
-static void arrange(Monitor *m);
-static void arrangemon(Monitor *m);
-static void attach(Client *c);
-static void attachstack(Client *c);
-static void buttonpress(XEvent *e);
-static void cleanupmon(Monitor *mon);
-static void clientmessage(XEvent *e);
-static void configure(Client *c);
-static void configurenotify(XEvent *e);
-static void configurerequest(XEvent *e);
-static Monitor *createmon(void);
-static void destroynotify(XEvent *e);
-static void detach(Client *c);
-static void detachstack(Client *c);
-static Monitor *dirtomon(int dir);
-static void drawbar(Monitor *m);
-static void drawbars(void);
-static void enternotify(XEvent *e);
-static void expose(XEvent *e);
-static void focus(Client *c);
-static void focusin(XEvent *e);
-static void focusmon(const Arg *arg);
-static void focusstack(const Arg *arg);
-static Atom getatomprop(Client *c, Atom prop);
-static int getrootptr(int *x, int *y);
-static long getstate(Window w);
-static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
-static void grabbuttons(Client *c, int focused);
-static void grabkeys(void);
-static void incnmaster(const Arg *arg);
-static void keypress(XEvent *e);
-static void killclient(const Arg *arg);
-static void manage(Window w, XWindowAttributes *wa);
-static void mappingnotify(XEvent *e);
-static void maprequest(XEvent *e);
-static void monocle(Monitor *m);
-static void motionnotify(XEvent *e);
-static void movemouse(const Arg *arg);
-static Client *nexttiled(Client *c);
-static void pop(Client *c);
-static void propertynotify(XEvent *e);
-static void quit(const Arg *arg);
-static Monitor *recttomon(int x, int y, int w, int h);
-static void resize(Client *c, int x, int y, int w, int h, int interact);
-static void resizeclient(Client *c, int x, int y, int w, int h);
-static void resizemouse(const Arg *arg);
-static void restack(Monitor *m);
-static int sendevent(Client *c, Atom proto);
-static void sendmon(Client *c, Monitor *m);
-static void setclientstate(Client *c, long state);
-static void setfocus(Client *c);
-static void setfullscreen(Client *c, int fullscreen);
-static void setlayout(const Arg *arg);
-static void setmfact(const Arg *arg);
-static void seturgent(Client *c, int urg);
-static void showhide(Client *c);
-static void sigchld(int unused);
-static void spawn(const Arg *arg);
-static void tag(const Arg *arg);
-static void tagmon(const Arg *arg);
-static void tile(Monitor *m);
-static void togglebar(const Arg *arg);
-static void togglefloating(const Arg *arg);
-static void toggletag(const Arg *arg);
-static void toggleview(const Arg *arg);
-static void unfocus(Client *c, int setfocus);
-static void unmanage(Client *c, int destroyed);
-static void unmapnotify(XEvent *e);
-static void updatebarpos(Monitor *m);
-static void updatebars(void);
-static void updateclientlist(void);
-static int updategeom(void);
-static void updatenumlockmask(void);
-static void updatesizehints(Client *c);
-static void updatestatus(void);
-static void updatetitle(Client *c);
-static void updatewindowtype(Client *c);
-static void updatewmhints(Client *c);
-static void view(const Arg *arg);
-static Monitor *wintomon(Window w);
-static int xerrordummy(Display *dpy, XErrorEvent *ee);
-static void zoom(const Arg *arg);
 
 /* variables */
 static const char broken[] = "broken";
@@ -213,6 +60,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
     [ClientMessage] = clientmessage,//33 处理客户端窗口发送的客户端消息事件
     [MappingNotify] = mappingnotify,//34
 };
+
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
 static Cur *cursor[CurLast];
@@ -243,6 +91,30 @@ Client* Client::wintoclient(Window w) {
             if (c->win == w)
                 return c;
     return nullptr;
+}
+
+void Client::configure() {
+    // 用于通知x11服务器对窗口进行重新配置
+    XConfigureEvent ce;
+    // 通知事件
+    ce.type = ConfigureNotify;
+    ce.display = dpy;
+    // 事件窗口
+    ce.event = win;
+    // window和event相同，也是客户端窗口
+    ce.window = win;
+    ce.x = x;
+    ce.y = y;
+    ce.width = w;
+    ce.height = h;
+    ce.border_width = bw;
+    // 窗口的兄弟窗口，设置为 None 表示没有兄弟窗口。
+    ce.above = None;
+    // 覆盖重定向标志，设置为 False 表示窗口不会被覆盖重定向。
+    ce.override_redirect = False;
+    // 将这个 ConfigureNotify 事件发送给客户端窗口 c->win，
+    // 并指定了事件掩码 StructureNotifyMask，以通知 X11 服务器重新配置客户端窗口。
+    XSendEvent(dpy, win, False, StructureNotifyMask, (XEvent *)&ce);
 }
 
 /*******************************************************************************
@@ -508,32 +380,7 @@ void clientmessage(XEvent *e) {
 	}
 }
 
-/*******************************************************************************
- * 设置特定窗口的几何属性,重新绘制特定窗口
-*******************************************************************************/
-void configure(Client *c) {
-    // 用于通知x11服务器对窗口进行重新配置
-	XConfigureEvent ce;
-    // 通知事件
-	ce.type = ConfigureNotify;
-	ce.display = dpy;
-    // 事件窗口
-	ce.event = c->win;
-    // window和event相同，也是客户端窗口
-	ce.window = c->win;
-	ce.x = c->x;
-	ce.y = c->y;
-	ce.width = c->w;
-	ce.height = c->h;
-	ce.border_width = c->bw;
-    // 窗口的兄弟窗口，设置为 None 表示没有兄弟窗口。
-    ce.above = None;
-    // 覆盖重定向标志，设置为 False 表示窗口不会被覆盖重定向。
-	ce.override_redirect = False;
-    // 将这个 ConfigureNotify 事件发送给客户端窗口 c->win，
-    // 并指定了事件掩码 StructureNotifyMask，以通知 X11 服务器重新配置客户端窗口。
-	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
-}
+
 
 /*******************************************************************************
  * 处理 X Window 系统中的窗口配置通知事件 (XConfigureEvent)。
@@ -607,11 +454,11 @@ configurerequest(XEvent *e)
 			if ((c->y + c->h) > m->my + m->mh && c->isfloating)
 				c->y = m->my + (m->mh / 2 - HEIGHT(c) / 2); /* center in y direction */
 			if ((ev->value_mask & (CWX|CWY)) && !(ev->value_mask & (CWWidth|CWHeight)))
-				configure(c);
+                c->configure();
 			if (ISVISIBLE(c))
 				XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
 		} else
-			configure(c);
+            c->configure();
 	} else {
 		wc.x = ev->x;
 		wc.y = ev->y;
@@ -1113,7 +960,8 @@ void manage(Window w, XWindowAttributes *wa) {
     // 设置边框颜色,pixel 用于获取颜色方案中边框颜色的像素值,并将这个像素值设置为客户端窗口的边框颜色
 	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
     // 重绘
-	configure(c); /* propagates border_width, if size doesn't change */
+    c->configure();
+//	configure(c); /* propagates border_width, if size doesn't change */
 	updatewindowtype(c);
 	updatesizehints(c);
 	updatewmhints(c);
@@ -1369,7 +1217,7 @@ resizeclient(Client *c, int x, int y, int w, int h)
 	c->oldh = c->h; c->h = wc.height = h;
 	wc.border_width = c->bw;
 	XConfigureWindow(dpy, c->win, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
-	configure(c);
+    c->configure();
 	XSync(dpy, False);
 }
 
