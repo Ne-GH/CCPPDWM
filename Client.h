@@ -61,13 +61,14 @@ public:
     void updatesizehints();
 
 
+    void unmanage(int destroyed);
+    int sendevent(Atom proto);
+
     void focus();
     void showhide();
 
     Client *nexttiled();
     void unfocus( int setfocus);
-    void unmanage(int destroyed);
-    int sendevent(Atom proto);
     void sendmon(Monitor *m);
     void setclientstate(long state);
     void setfullscreen(int fullscreen);

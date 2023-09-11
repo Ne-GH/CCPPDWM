@@ -297,7 +297,7 @@ void Client::setfocus() {
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *) &(win), 1);
     }
-    ::sendevent(this, wmatom[WMTakeFocus]);
+    sendevent(wmatom[WMTakeFocus]);
 }
 
 void Client::showhide() {
@@ -466,8 +466,28 @@ void Client::unmanage(int destroyed) {
     ::arrange(m);
 }
 
+
 int Client::sendevent(Atom proto) {
-    return 0;
+    int n;
+    Atom *protocols;
+    int exists = 0;
+    XEvent ev;
+
+    if (XGetWMProtocols(dpy, win, &protocols, &n)) {
+        while (!exists && n--)
+            exists = protocols[n] == proto;
+        XFree(protocols);
+    }
+    if (exists) {
+        ev.type = ClientMessage;
+        ev.xclient.window = win;
+        ev.xclient.message_type = wmatom[WMProtocols];
+        ev.xclient.format = 32;
+        ev.xclient.data.l[0] = proto;
+        ev.xclient.data.l[1] = CurrentTime;
+        XSendEvent(dpy, win, False, NoEventMask, &ev);
+    }
+    return exists;
 }
 
 void Client::sendmon(Monitor *m) {
@@ -1194,7 +1214,7 @@ killclient(const Arg *arg)
 {
 	if (!selmon->sel)
 		return;
-	if (!sendevent(selmon->sel, wmatom[WMDelete])) {
+	if (!selmon->sel->sendevent(wmatom[WMDelete])) {
 		XGrabServer(dpy);
 		XSetErrorHandler(xerrordummy);
 		XSetCloseDownMode(dpy, DestroyAll);
@@ -1619,30 +1639,6 @@ setclientstate(Client *c, long state)
 		PropModeReplace, (unsigned char *)data, 2);
 }
 
-int
-sendevent(Client *c, Atom proto)
-{
-	int n;
-	Atom *protocols;
-	int exists = 0;
-	XEvent ev;
-
-	if (XGetWMProtocols(dpy, c->win, &protocols, &n)) {
-		while (!exists && n--)
-			exists = protocols[n] == proto;
-		XFree(protocols);
-	}
-	if (exists) {
-		ev.type = ClientMessage;
-		ev.xclient.window = c->win;
-		ev.xclient.message_type = wmatom[WMProtocols];
-		ev.xclient.format = 32;
-		ev.xclient.data.l[0] = proto;
-		ev.xclient.data.l[1] = CurrentTime;
-		XSendEvent(dpy, c->win, False, NoEventMask, &ev);
-	}
-	return exists;
-}
 
 
 

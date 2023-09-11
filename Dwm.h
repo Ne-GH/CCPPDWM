@@ -178,7 +178,6 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setfullscreen(Client *c, int fullscreen);
