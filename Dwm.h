@@ -179,7 +179,6 @@ static void zoom(const Arg *arg);
 
 
 static void sendmon(Client *c, Monitor *m);
-static void setclientstate(Client *c, long state);
 static void setfullscreen(Client *c, int fullscreen);
 static void seturgent(Client *c, int urg);
 static void grabbuttons(Client *c, int focused);

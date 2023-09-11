@@ -454,7 +454,7 @@ void Client::unmanage(int destroyed) {
         XSelectInput(dpy, win, NoEventMask);
         XConfigureWindow(dpy, win, CWBorderWidth, &wc); /* restore border */
         XUngrabButton(dpy, AnyButton, AnyModifier, win);
-        ::setclientstate(this, WithdrawnState);
+        setclientstate(WithdrawnState);
         XSync(dpy, False);
         XSetErrorHandler(XError);
         XUngrabServer(dpy);
@@ -495,7 +495,9 @@ void Client::sendmon(Monitor *m) {
 }
 
 void Client::setclientstate(long state) {
-
+    long data[] = { state, None };
+    XChangeProperty(dpy, win, wmatom[WMState], wmatom[WMState], 32,
+                    PropModeReplace, (unsigned char *)data, 2);
 }
 
 void Client::setfullscreen(int fullscreen) {
@@ -1296,7 +1298,7 @@ void manage(Window w, XWindowAttributes *wa) {
     // 函数将窗口移动到指定的位置和大小，通常将其偏移了 2 * sw（两倍的屏幕宽度）
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
     // 设置客户端窗口的状态为正常状态NormalState
-	setclientstate(c, NormalState);
+	c->setclientstate(NormalState);
 	if (c->mon == selmon)
         // 取消焦点
 		unfocus(selmon->sel, 0);
@@ -1630,14 +1632,7 @@ sendmon(Client *c, Monitor *m)
 	arrange(NULL);
 }
 
-void
-setclientstate(Client *c, long state)
-{
-	long data[] = { state, None };
 
-	XChangeProperty(dpy, c->win, wmatom[WMState], wmatom[WMState], 32,
-		PropModeReplace, (unsigned char *)data, 2);
-}
 
 
 
@@ -1889,7 +1884,7 @@ void unmapnotify(XEvent *e) {
 	if ((c = Client::wintoclient(ev->window))) {
         // 这一行代码检查窗口取消映射事件是否是由客户端发送的。如果是客户端发送的事件，表示客户端主动取消了映射，因此将客户端的状态设置为 WithdrawnState，表示窗口已撤回。
 		if (ev->send_event)
-			setclientstate(c, WithdrawnState);
+			c->setclientstate(WithdrawnState);
         // 如果不是客户端发送的事件，表示窗口由其他原因取消了映射，那么就调用 unmanage 函数来从窗口管理器中移除指定的客户端 c，但不销毁客户端。这意味着窗口不再管理，但仍然可以恢复到正常状态，以备后续重新映射
 		else
 			c->unmanage(0);
