@@ -269,7 +269,7 @@ void Client::updatewindowtype() {
     Atom wtype = ::getatomprop(this, netatom[NetWMWindowType]);
 
     if (state == netatom[NetWMFullscreen])
-        ::setfullscreen(this, 1);
+        setfullscreen(1);
     if (wtype == netatom[NetWMWindowTypeDialog])
         isfloating = 1;
 }
@@ -501,7 +501,29 @@ void Client::setclientstate(long state) {
 }
 
 void Client::setfullscreen(int fullscreen) {
-
+    if (fullscreen && !isfullscreen) {
+        XChangeProperty(dpy, win, netatom[NetWMState], XA_ATOM, 32,
+                        PropModeReplace, (unsigned char*)&netatom[NetWMFullscreen], 1);
+        isfullscreen = 1;
+        oldstate = isfloating;
+        oldbw = bw;
+        bw = 0;
+        isfloating = 1;
+        ::resizeclient(this, mon->mx, mon->my, mon->mw, mon->mh);
+        XRaiseWindow(dpy, win);
+    } else if (!fullscreen && isfullscreen){
+        XChangeProperty(dpy, win, netatom[NetWMState], XA_ATOM, 32,
+                        PropModeReplace, (unsigned char*)0, 0);
+        isfullscreen = 0;
+        isfloating = oldstate;
+        bw = oldbw;
+        x = oldx;
+        y = oldy;
+        w = oldw;
+        h = oldh;
+        ::resizeclient(this, x, y, w, h);
+        ::arrange(mon);
+    }
 }
 
 void Client::seturgent(int urg) {
@@ -717,7 +739,7 @@ void clientmessage(XEvent *e) {
         // 如果为 1（表示添加全屏状态）或 2（表示切换全屏状态）
 		if (cme->data.l[1] == netatom[NetWMFullscreen]
 		|| cme->data.l[2] == netatom[NetWMFullscreen])
-			setfullscreen(c, (cme->data.l[0] == 1 /* _NET_WM_STATE_ADD    */
+			c->setfullscreen((cme->data.l[0] == 1 /* _NET_WM_STATE_ADD    */
 				|| (cme->data.l[0] == 2 /* _NET_WM_STATE_TOGGLE */ && !c->isfullscreen)));
 	}
     // 检查接收到的客户端消息事件的类型是否为 _NET_ACTIVE_WINDOW，这通常用于激活或突出显示窗口。
@@ -1637,33 +1659,7 @@ sendmon(Client *c, Monitor *m)
 
 
 
-void
-setfullscreen(Client *c, int fullscreen)
-{
-	if (fullscreen && !c->isfullscreen) {
-		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
-			PropModeReplace, (unsigned char*)&netatom[NetWMFullscreen], 1);
-		c->isfullscreen = 1;
-		c->oldstate = c->isfloating;
-		c->oldbw = c->bw;
-		c->bw = 0;
-		c->isfloating = 1;
-		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
-		XRaiseWindow(dpy, c->win);
-	} else if (!fullscreen && c->isfullscreen){
-		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
-			PropModeReplace, (unsigned char*)0, 0);
-		c->isfullscreen = 0;
-		c->isfloating = c->oldstate;
-		c->bw = c->oldbw;
-		c->x = c->oldx;
-		c->y = c->oldy;
-		c->w = c->oldw;
-		c->h = c->oldh;
-		resizeclient(c, c->x, c->y, c->w, c->h);
-		arrange(c->mon);
-	}
-}
+
 
 void
 setlayout(const Arg *arg)
