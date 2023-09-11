@@ -179,7 +179,6 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static void setfocus(Client *c);
 static void showhide(Client *c);
 static void attachstack(Client *c);
 static void applyrules(Client *c);

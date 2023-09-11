@@ -159,7 +159,13 @@ void Client::updatewmhints() {
 }
 
 void Client::setfocus() {
-
+    if (!neverfocus) {
+        XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
+        XChangeProperty(dpy, root, netatom[NetActiveWindow],
+                        XA_WINDOW, 32, PropModeReplace,
+                        (unsigned char *) &(win), 1);
+    }
+    sendevent(this, wmatom[WMTakeFocus]);
 }
 
 void Client::showhide() {
@@ -746,7 +752,7 @@ focus(Client *c)
 		attachstack(c);
 		grabbuttons(c, 1);
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
-		setfocus(c);
+		c->setfocus();
 	} else {
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
 		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
@@ -762,7 +768,7 @@ void focusin(XEvent *e) {
     // 如果当前监视器指向的窗口不为空
     // 并且 事件窗口不等于当前监视器所在的当前窗口
 	if (selmon->sel && ev->window != selmon->sel->win)
-		setfocus(selmon->sel);
+		selmon->sel->setfocus();
 }
 
 void
@@ -1439,17 +1445,7 @@ sendevent(Client *c, Atom proto)
 	return exists;
 }
 
-void
-setfocus(Client *c)
-{
-	if (!c->neverfocus) {
-		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
-		XChangeProperty(dpy, root, netatom[NetActiveWindow],
-			XA_WINDOW, 32, PropModeReplace,
-			(unsigned char *) &(c->win), 1);
-	}
-	sendevent(c, wmatom[WMTakeFocus]);
-}
+
 
 void
 setfullscreen(Client *c, int fullscreen)

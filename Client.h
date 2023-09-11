@@ -51,6 +51,7 @@ public:
     void updatetitle();
     void updatewindowtype();
     void updatewmhints();
+
     void setfocus();
     void showhide();
     void updatesizehints();
