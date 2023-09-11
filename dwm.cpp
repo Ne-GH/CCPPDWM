@@ -195,7 +195,22 @@ static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
-
+int XError(Display *dpy, XErrorEvent *ee)
+{
+    if (ee->error_code == BadWindow
+        || (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
+        || (ee->request_code == X_PolyText8 && ee->error_code == BadDrawable)
+        || (ee->request_code == X_PolyFillRectangle && ee->error_code == BadDrawable)
+        || (ee->request_code == X_PolySegment && ee->error_code == BadDrawable)
+        || (ee->request_code == X_ConfigureWindow && ee->error_code == BadMatch)
+        || (ee->request_code == X_GrabButton && ee->error_code == BadAccess)
+        || (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
+        || (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
+        return 0;
+    fprintf(stderr, "dwm: fatal error: request code=%d, error code=%d\n",
+            ee->request_code, ee->error_code);
+    return xerrorxlib(dpy, ee); /* may call exit */
+}
 
 /*******************************************************************************
  * 通过window编号在所有窗口中找到指向这个窗口的指针
@@ -427,7 +442,28 @@ void Client::unfocus(int setfocus) {
 }
 
 void Client::unmanage(int destroyed) {
+    Monitor *m = mon;
+    XWindowChanges wc;
 
+    detach();
+    detachstack();
+    if (!destroyed) {
+        wc.border_width = oldbw;
+        XGrabServer(dpy); /* avoid race conditions */
+        XSetErrorHandler(xerrordummy);
+        XSelectInput(dpy, win, NoEventMask);
+        XConfigureWindow(dpy, win, CWBorderWidth, &wc); /* restore border */
+        XUngrabButton(dpy, AnyButton, AnyModifier, win);
+        ::setclientstate(this, WithdrawnState);
+        XSync(dpy, False);
+        XSetErrorHandler(XError);
+        XUngrabServer(dpy);
+    }
+//    free(c);
+    delete this;
+    ::focus(NULL);
+    ::updateclientlist();
+    ::arrange(m);
 }
 
 int Client::sendevent(Atom proto) {
@@ -788,7 +824,7 @@ void destroynotify(XEvent *e) {
 	XDestroyWindowEvent *ev = &e->xdestroywindow;
     // 如果获取到这个窗口,就删除这个窗口
 	if ((c = Client::wintoclient(ev->window)))
-		unmanage(c, 1);
+		c->unmanage(1);
 }
 
 
@@ -1151,22 +1187,7 @@ void keypress(XEvent *e) {
             keys[i].func(&(keys[i].arg));
 }
 
-int XError(Display *dpy, XErrorEvent *ee)
-{
-    if (ee->error_code == BadWindow
-        || (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
-        || (ee->request_code == X_PolyText8 && ee->error_code == BadDrawable)
-        || (ee->request_code == X_PolyFillRectangle && ee->error_code == BadDrawable)
-        || (ee->request_code == X_PolySegment && ee->error_code == BadDrawable)
-        || (ee->request_code == X_ConfigureWindow && ee->error_code == BadMatch)
-        || (ee->request_code == X_GrabButton && ee->error_code == BadAccess)
-        || (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
-        || (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
-        return 0;
-    fprintf(stderr, "dwm: fatal error: request code=%d, error code=%d\n",
-            ee->request_code, ee->error_code);
-    return xerrorxlib(dpy, ee); /* may call exit */
-}
+
 
 void
 killclient(const Arg *arg)
@@ -1859,31 +1880,7 @@ unfocus(Client *c, int setfocus)
 	}
 }
 
-void
-unmanage(Client *c, int destroyed)
-{
-	Monitor *m = c->mon;
-	XWindowChanges wc;
 
-	c->detach();
-	c->detachstack();
-	if (!destroyed) {
-		wc.border_width = c->oldbw;
-		XGrabServer(dpy); /* avoid race conditions */
-		XSetErrorHandler(xerrordummy);
-		XSelectInput(dpy, c->win, NoEventMask);
-		XConfigureWindow(dpy, c->win, CWBorderWidth, &wc); /* restore border */
-		XUngrabButton(dpy, AnyButton, AnyModifier, c->win);
-		setclientstate(c, WithdrawnState);
-		XSync(dpy, False);
-		XSetErrorHandler(XError);
-		XUngrabServer(dpy);
-	}
-	free(c);
-	focus(NULL);
-	updateclientlist();
-	arrange(m);
-}
 
 /*******************************************************************************
  * unmapnotify 函数用于处理窗口取消映射通知事件。
@@ -1899,7 +1896,7 @@ void unmapnotify(XEvent *e) {
 			setclientstate(c, WithdrawnState);
         // 如果不是客户端发送的事件，表示窗口由其他原因取消了映射，那么就调用 unmanage 函数来从窗口管理器中移除指定的客户端 c，但不销毁客户端。这意味着窗口不再管理，但仍然可以恢复到正常状态，以备后续重新映射
 		else
-			unmanage(c, 0);
+			c->unmanage(0);
 	}
 }
 
@@ -2308,79 +2305,79 @@ void Dwm::SetUp(void) {
  * 退出dwm时释放所有资源
 *******************************************************************************/
 void Dwm::CleanUp(void) {
-                    Arg a = {.ui = (unsigned int)~0};
-                    Layout foo = { "", NULL };
-                    Monitor *m;
-                    size_t i;
+    Arg a = {.ui = (unsigned int)~0};
+    Layout foo = { "", NULL };
+    Monitor *m;
+    size_t i;
 
-                    // 将当前桌面视图切换到一个默认的视图，以确保所有客户端都被移动到一个可见的桌面
-                    view(&a);
-                    // 将当前的layout置空
-                    selmon->lt[selmon->sellt] = &foo;
-                    // 遍历所有监视器，如果还是窗口，就取消管理这些窗口
-                    for (m = mons; m; m = m->next)
-                    while (m->stack)
-                    unmanage(m->stack, 0);
-                    // 取消注册dwm监听的所有键盘快捷键
-                    XUngrabKey(dpy, AnyKey, AnyModifier, root);
-                    // 循环释放所有监视器
-                    while (mons)
-                    cleanupmon(mons);
-                    // 释放所有光标
-                    for (i = 0; i < CurLast; i++)
-                    drw_cur_free(drw, cursor[i]);
-                    // 释放所有颜色方案
-                    for (i = 0; i < LENGTH(colors); i++)
-                    free(scheme[i]);
-                    // 释放颜色方案数组
-                    free(scheme);
-                    // 销毁dwm使用的用于支持_NET_SUPPORTING_CHECK
-                    XDestroyWindow(dpy, wmcheckwin);
-                    // 释放drw
-                    drw_free(drw);
-                    // 确保所有未完成的X协议请求都被处理
-                    XSync(dpy, False);
-                    // 将输入焦点设置为根窗口
-                    XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
-                    // 删除 _NET_ACTIVE_WINDOW属性
-                    XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
-                    }
+    // 将当前桌面视图切换到一个默认的视图，以确保所有客户端都被移动到一个可见的桌面
+    view(&a);
+    // 将当前的layout置空
+    selmon->lt[selmon->sellt] = &foo;
+    // 遍历所有监视器，如果还是窗口，就取消管理这些窗口
+    for (m = mons; m; m = m->next)
+    while (m->stack)
+    m->stack->unmanage(0);
+    // 取消注册dwm监听的所有键盘快捷键
+    XUngrabKey(dpy, AnyKey, AnyModifier, root);
+    // 循环释放所有监视器
+    while (mons)
+    cleanupmon(mons);
+    // 释放所有光标
+    for (i = 0; i < CurLast; i++)
+    drw_cur_free(drw, cursor[i]);
+    // 释放所有颜色方案
+    for (i = 0; i < LENGTH(colors); i++)
+    free(scheme[i]);
+    // 释放颜色方案数组
+    free(scheme);
+    // 销毁dwm使用的用于支持_NET_SUPPORTING_CHECK
+    XDestroyWindow(dpy, wmcheckwin);
+    // 释放drw
+    drw_free(drw);
+    // 确保所有未完成的X协议请求都被处理
+    XSync(dpy, False);
+    // 将输入焦点设置为根窗口
+    XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
+    // 删除 _NET_ACTIVE_WINDOW属性
+    XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
+}
 
 /*******************************************************************************
  * 扫描所有的窗口，并根据是否是辅助窗口来跳过或者调用manage函数
 *******************************************************************************/
 void Dwm::Scan(void) {
-                 unsigned int i, num;
-                 Window d1, d2, *wins = NULL;
-                 XWindowAttributes wa;
+     unsigned int i, num;
+     Window d1, d2, *wins = NULL;
+     XWindowAttributes wa;
 
-                 // 查询根窗口下的所有窗口，并将结果存储在wins数组中,同时获取窗口的数量num
-                 if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
-                 for (i = 0; i < num; i++) {
-                 // 获取wins[i]窗口的属性信息,存储在wa中
-                 if (!XGetWindowAttributes(dpy, wins[i], &wa)
-                 // 如果窗口的override_redirect属性为真，或者窗口具有XGetTransientForHint提示（通常用于指示窗口是某个主窗口的辅助窗口），则跳过该窗口
-                 || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
-                 continue;
-                 // 如果窗口的状态是可视状态 或者 窗口的状态为最小化状态，则调用manage函数对窗口进行管理
-                 if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
-                 // 管理窗口,进行重排等操作
-                 manage(wins[i], &wa);
-                 }
-                 // 检查窗口的属性和状态来判断是否要管理该窗口
-                 for (i = 0; i < num; i++) { /* now the transients */
-                 // 将窗口的信息存储在wa中
-                 if (!XGetWindowAttributes(dpy, wins[i], &wa))
-                 continue;
-                 //
-                 if (XGetTransientForHint(dpy, wins[i], &d1)
-                 && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
-                 manage(wins[i], &wa);
-                 }
-                 if (wins)
-                 XFree(wins);
-                 }
-                 }
+     // 查询根窗口下的所有窗口，并将结果存储在wins数组中,同时获取窗口的数量num
+     if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
+     for (i = 0; i < num; i++) {
+     // 获取wins[i]窗口的属性信息,存储在wa中
+     if (!XGetWindowAttributes(dpy, wins[i], &wa)
+     // 如果窗口的override_redirect属性为真，或者窗口具有XGetTransientForHint提示（通常用于指示窗口是某个主窗口的辅助窗口），则跳过该窗口
+     || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
+     continue;
+     // 如果窗口的状态是可视状态 或者 窗口的状态为最小化状态，则调用manage函数对窗口进行管理
+     if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
+     // 管理窗口,进行重排等操作
+     manage(wins[i], &wa);
+     }
+     // 检查窗口的属性和状态来判断是否要管理该窗口
+     for (i = 0; i < num; i++) { /* now the transients */
+     // 将窗口的信息存储在wa中
+     if (!XGetWindowAttributes(dpy, wins[i], &wa))
+     continue;
+     //
+     if (XGetTransientForHint(dpy, wins[i], &d1)
+     && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
+     manage(wins[i], &wa);
+     }
+     if (wins)
+     XFree(wins);
+     }
+     }
 
 Dwm::Dwm() {
     CheckOtherWm();
