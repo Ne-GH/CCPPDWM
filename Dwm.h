@@ -166,21 +166,20 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static void updatebarpos(Monitor *m);
+
+
+// TODO
+static void showhide(Client *c);
+static void focus(Client *c);
+static Client *nexttiled(Client *c);
+static void unfocus(Client *c, int setfocus);
+
+
+
 static void monocle(Monitor *m);
 static void arrange(Monitor *m);
 static Monitor *createmon(void);
 static Monitor *recttomon(int x, int y, int w, int h);
 static void tile(Monitor *m);
-
-
-
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void sendmon(Client *c, Monitor *m);
-
-// TODO
-static void showhide(Client *c);
-static void focus(Client *c);
-
-static Client *nexttiled(Client *c);
-static void unfocus(Client *c, int setfocus);
