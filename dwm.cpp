@@ -73,7 +73,124 @@ static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
 /* configuration, allows nested code to access above variables */
-#include "config.h"
+/* appearance */
+static const unsigned int borderpx  = 1;        /* border pixel of windows */
+static const unsigned int snap      = 32;       /* snap pixel */
+static const int showbar            = 1;        /* 0 means no bar */
+static const int topbar             = 1;        /* 0 means bottom bar */
+static const char *fonts[]          = { "monospace:size=10" };
+static const char dmenufont[]       = "monospace:size=10";
+static const char col_gray1[]       = "#222222";
+static const char col_gray2[]       = "#444444";
+static const char col_gray3[]       = "#bbbbbb";
+static const char col_gray4[]       = "#eeeeee";
+static const char col_cyan[]        = "#005577";
+static const char *colors[][3]      = {
+        /*               fg         bg         border   */
+        [SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
+        [SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
+};
+
+
+static const Rule rules[] = {
+        /* xprop(1):
+         *	WM_CLASS(STRING) = instance, class
+         *	WM_NAME(STRING) = title
+         */
+        /* class      instance    title       tags mask     isfloating   monitor */
+        { "Gimp",     NULL,       NULL,       0,            1,           -1 },
+        { "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
+};
+
+/* layout(s) */
+static const float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
+static const int nmaster     = 1;    /* number of clients in master area */
+static const int resizehints = 1;    /* 1 means respect size hints in tiled resizals */
+static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
+
+static const Layout layouts[] = {
+        /* symbol     arrange function */
+        { "[]=",      tile },    /* first entry is default */
+        { "><>",      NULL },    /* no layout function means floating behavior */
+        { "[M]",      monocle },
+};
+
+/* key definitions */
+#define MODKEY Mod1Mask
+#define TAGKEYS(KEY,TAG) \
+	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
+	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
+	{ MODKEY|ShiftMask,             KEY,      tag,            {.ui = 1 << TAG} }, \
+	{ MODKEY|ControlMask|ShiftMask, KEY,      toggletag,      {.ui = 1 << TAG} },
+
+/* helper for spawning shell commands in the pre dwm-5.0 fashion */
+#define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
+
+/* commands */
+static const char *dmenucmd[] = { "dmenu_run", "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+static const char *termcmd[]  = { "st", NULL };
+
+static const Key keys[] = {
+        /* modifier                     key        function        argument */
+        { MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
+        { MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+        { MODKEY,                       XK_b,      togglebar,      {0} },
+        { MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
+        { MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
+        { MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
+        { MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
+        { MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
+        { MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
+        { MODKEY,                       XK_Return, zoom,           {0} },
+        { MODKEY,                       XK_Tab,    view,           {0} },
+        { MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
+        { MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
+        { MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
+        { MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+        { MODKEY,                       XK_space,  setlayout,      {0} },
+        { MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
+        { MODKEY,                       XK_0,      view,           {.ui = (unsigned int)~0 } },
+        { MODKEY|ShiftMask,             XK_0,      tag,            {.ui = (unsigned int)~0 } },
+        { MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
+        { MODKEY,                       XK_period, focusmon,       {.i = +1 } },
+        { MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
+        { MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
+        TAGKEYS(                        XK_1,                      0)
+        TAGKEYS(                        XK_2,                      1)
+        TAGKEYS(                        XK_3,                      2)
+        TAGKEYS(                        XK_4,                      3)
+        TAGKEYS(                        XK_5,                      4)
+        TAGKEYS(                        XK_6,                      5)
+        TAGKEYS(                        XK_7,                      6)
+        TAGKEYS(                        XK_8,                      7)
+        TAGKEYS(                        XK_9,                      8)
+        { MODKEY|ShiftMask,             XK_q,      quit,           {0} },
+};
+
+/* button definitions */
+/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+static const Button buttons[] = {
+        /* click                event mask      button          function        argument */
+        { ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
+        { ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
+        { ClkWinTitle,          0,              Button2,        zoom,           {0} },
+        { ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
+        { ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
+        { ClkClientWin,         MODKEY,         Button2,        togglefloating, {0} },
+        { ClkClientWin,         MODKEY,         Button3,        resizemouse,    {0} },
+        { ClkTagBar,            0,              Button1,        view,           {0} },
+        { ClkTagBar,            0,              Button3,        toggleview,     {0} },
+        { ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
+        { ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
+};
+
+
+
+/* tagging */
+static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+//#define TAGMASK                 ((1 << LENGTH(tags)) - 1)
+#define TAGMASK                 ((1 << 9) - 1)
+
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
@@ -181,8 +298,49 @@ void Client::attachstack() {
     mon->stack = this;
 }
 
+/*******************************************************************************
+ * 根据窗口规则设置窗口的属性
+*******************************************************************************/
 void Client::applyrules() {
+    // 存储窗口的类别和实例信息
+    const char *_class, *instance;
+    Monitor *m;
+    XClassHint ch = {nullptr, nullptr };
 
+    /* rule matching */
+    // 窗口是否浮动
+    isfloating = 0;
+    tags = 0;
+    // 获取窗口的类别和实例信息，并存储在ch中
+    XGetClassHint(dpy, win, &ch);
+    _class    = ch.res_class ? ch.res_class : broken;
+    instance = ch.res_name  ? ch.res_name  : broken;
+
+    for (int i = 0; i < LENGTH(rules); i++) {
+        const Rule *r = &rules[i];
+        // 如果规则标题为空或者窗口标题不等于规则标题
+        if ((!r->title || strstr(name, r->title))
+            // 如果规则的class为空，或者当前class和规则的calss不同
+            && (!r->_class || strstr(_class, r->_class))
+            // 如果规则的instance为空，或者当前instance和规则的instance不同
+            && (!r->instance || strstr(instance, r->instance))) {
+            isfloating = r->isfloating;
+            tags |= r->tags;
+            for (m = mons; m && m->num != r->monitor; m = m->next)
+                ;
+            if (m)
+                mon = m;
+        }
+    }
+    if (ch.res_class)
+        XFree(ch.res_class);
+    if (ch.res_name)
+        XFree(ch.res_name);
+    // 代码将客户端窗口的标签进行了重新调整。
+    // 它首先检查客户端窗口的标签是否在 TAGMASK 中，
+    // 如果在其中，则保持不变。
+    // 否则，它将客户端窗口的标签设置为当前监视器的标签集合中的标签。这确保了窗口的标签始终有效，并且不会超出当前监视器的标签集合。
+    tags = tags & TAGMASK ? tags & TAGMASK : mon->tagset[mon->seltags];
 }
 
 void Client::attach() {
@@ -206,50 +364,7 @@ void Client::pop() {
 
 }
 
-/*******************************************************************************
- * 根据窗口规则设置窗口的属性
-*******************************************************************************/
-void applyrules(Client *c) {
-    // 存储窗口的类别和实例信息
-	const char *_class, *instance;
-	Monitor *m;
-	XClassHint ch = {nullptr, nullptr };
 
-	/* rule matching */
-    // 窗口是否浮动
-	c->isfloating = 0;
-	c->tags = 0;
-    // 获取窗口的类别和实例信息，并存储在ch中
-	XGetClassHint(dpy, c->win, &ch);
-	_class    = ch.res_class ? ch.res_class : broken;
-	instance = ch.res_name  ? ch.res_name  : broken;
-
-	for (int i = 0; i < LENGTH(rules); i++) {
-        const Rule *r = &rules[i];
-        // 如果规则标题为空或者窗口标题不等于规则标题
-		if ((!r->title || strstr(c->name, r->title))
-        // 如果规则的class为空，或者当前class和规则的calss不同
-		&& (!r->_class || strstr(_class, r->_class))
-       // 如果规则的instance为空，或者当前instance和规则的instance不同
-		&& (!r->instance || strstr(instance, r->instance))) {
-			c->isfloating = r->isfloating;
-			c->tags |= r->tags;
-			for (m = mons; m && m->num != r->monitor; m = m->next)
-                ;
-			if (m)
-				c->mon = m;
-		}
-	}
-	if (ch.res_class)
-		XFree(ch.res_class);
-	if (ch.res_name)
-		XFree(ch.res_name);
-    // 代码将客户端窗口的标签进行了重新调整。
-    // 它首先检查客户端窗口的标签是否在 TAGMASK 中，
-    // 如果在其中，则保持不变。
-    // 否则，它将客户端窗口的标签设置为当前监视器的标签集合中的标签。这确保了窗口的标签始终有效，并且不会超出当前监视器的标签集合。
-	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
-}
 
 int
 applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
@@ -1019,7 +1134,7 @@ void manage(Window w, XWindowAttributes *wa) {
 	}
     else {
 		c->mon = selmon;
-		applyrules(c);
+		c->applyrules();
 	}
     // 检查客户端窗口的右边界是否超出了当前监视器的右边界
 	if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
