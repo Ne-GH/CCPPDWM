@@ -117,17 +117,11 @@ public:
 
 
 /* function declarations */
-static void arrange(Monitor *m);
-static void arrangemon(Monitor *m);
 static void buttonpress(XEvent *e);
-static void cleanupmon(Monitor *mon);
 static void clientmessage(XEvent *e);
 static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
-static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
-static Monitor *dirtomon(int dir);
-static void drawbar(Monitor *m);
 static void drawbars(void);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
@@ -144,42 +138,51 @@ static void killclient(const Arg *arg);
 static void manage(Window w, XWindowAttributes *wa);
 static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
-static void monocle(Monitor *m);
 static void motionnotify(XEvent *e);
 static void movemouse(const Arg *arg);
 static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
-static Monitor *recttomon(int x, int y, int w, int h);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
-static void restack(Monitor *m);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
-static void tile(Monitor *m);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void unmapnotify(XEvent *e);
-static void updatebarpos(Monitor *m);
 static void updatebars(void);
 static void updateclientlist(void);
 static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatestatus(void);
 static void view(const Arg *arg);
-static Monitor *wintomon(Window w);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
+static void arrange(Monitor *m);
+static void arrangemon(Monitor *m);
+static void cleanupmon(Monitor *mon);
+static Monitor *createmon(void);
+static Monitor *dirtomon(int dir);
+static void drawbar(Monitor *m);
+static void monocle(Monitor *m);
+static Monitor *recttomon(int x, int y, int w, int h);
+static void restack(Monitor *m);
+static void tile(Monitor *m);
+static void updatebarpos(Monitor *m);
+static Monitor *wintomon(Window w);
 
+
+
+
+static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void sendmon(Client *c, Monitor *m);
 
 // TODO

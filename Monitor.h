@@ -44,4 +44,18 @@ struct Monitor {
     Monitor *next; // 一个指向下一个监视器的指针，通常用于连接多个监视器。
     Window barwin; // 任务栏的窗口句柄。
     const Layout *lt[2]; // 一个指向布局（Layout）结构体的数组，通常包含两种不同的布局模式，例如平铺布局和主区域布局。
+
+
+    void arrange();
+    void arrangemon();
+    void cleanupmon();
+    Monitor *createmon(void);
+    Monitor *dirtomon(int dir);
+    void drawbar();
+    void monocle();
+    Monitor *recttomon(int x, int y, int w, int h);
+    void restack();
+    void tile();
+    void updatebarpos();
+    static Monitor *wintomon(Window);
 };;

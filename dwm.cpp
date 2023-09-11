@@ -581,6 +581,65 @@ Atom Client::getatomprop(Atom prop) {
 }
 
 
+void Monitor::arrange() {
+
+}
+
+void Monitor::arrangemon() {
+
+}
+
+void Monitor::cleanupmon() {
+
+}
+
+Monitor *Monitor::createmon(void) {
+    return nullptr;
+}
+
+Monitor *Monitor::dirtomon(int dir) {
+    return nullptr;
+}
+
+void Monitor::drawbar() {
+
+}
+
+void Monitor::monocle() {
+
+}
+
+Monitor *Monitor::recttomon(int x, int y, int w, int h) {
+    return nullptr;
+}
+
+void Monitor::restack() {
+
+}
+
+void Monitor::tile() {
+
+}
+
+void Monitor::updatebarpos() {
+
+}
+
+Monitor *Monitor::wintomon(Window w) {
+    int x, y;
+    Client *c;
+    Monitor *m;
+
+    if (w == root && ::getrootptr(&x, &y))
+        return ::recttomon(x, y, 1, 1);
+    for (m = mons; m; m = m->next)
+        if (w == m->barwin)
+            return m;
+    if ((c = Client::wintoclient(w)))
+        return c->mon;
+    return selmon;
+}
+
 int
 applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 {
@@ -698,7 +757,7 @@ void buttonpress(XEvent *e) {
 	/* focus monitor if necessary */
     // 检测点击的监视器是哪一个，如果不是当前监视器
     // 切换监视器并重新聚焦
-	if ((m = wintomon(ev->window)) && m != selmon) {
+	if ((m = Monitor::wintomon(ev->window)) && m != selmon) {
 		unfocus(selmon->sel, 1);
 		selmon = m;
 		focus(NULL);
@@ -1009,7 +1068,7 @@ void enternotify(XEvent *e) {
     // 获取该窗口
 	c = Client::wintoclient(ev->window);
     // 获取监视器
-	m = c ? c->mon : wintomon(ev->window);
+	m = c ? c->mon : Monitor::wintomon(ev->window);
     // 如果不是当前监视器
 	if (m != selmon) {
 		unfocus(selmon->sel, 1);
@@ -1030,7 +1089,7 @@ void expose(XEvent *e) {
 
     // ==0时曝光事件的序列已经完成，曝光事件是按照一系列事件依次发送的，ev->count 指示了还有多少个曝光事件在队列中等待处理。当 ev->count 为零时，表示曝光事件序列已完成。
     // 获取事件所在的监视器
-	if (ev->count == 0 && (m = wintomon(ev->window)))
+	if (ev->count == 0 && (m = Monitor::wintomon(ev->window)))
         // 重绘该监视器上的状态栏
 		drawbar(m);
 }
@@ -2038,7 +2097,7 @@ int updategeom(void) {
 	}
 	if (dirty) {
 		selmon = mons;
-		selmon = wintomon(root);
+		selmon = Monitor::wintomon(root);
 	}
 	return dirty;
 }
@@ -2089,22 +2148,7 @@ view(const Arg *arg)
 }
 
 
-Monitor *
-wintomon(Window w)
-{
-	int x, y;
-	Client *c;
-	Monitor *m;
 
-	if (w == root && getrootptr(&x, &y))
-		return recttomon(x, y, 1, 1);
-	for (m = mons; m; m = m->next)
-		if (w == m->barwin)
-			return m;
-	if ((c = Client::wintoclient(w)))
-		return c->mon;
-	return selmon;
-}
 
 /* There's no way to check accesses to destroyed windows, thus those cases are
  * ignored (especially on UnmapNotify's). Other types of errors call Xlibs
