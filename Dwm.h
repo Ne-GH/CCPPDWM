@@ -167,7 +167,6 @@ static void zoom(const Arg *arg);
 
 
 static void arrange(Monitor *m);
-static void arrangemon(Monitor *m);
 static void cleanupmon(Monitor *mon);
 static Monitor *createmon(void);
 static Monitor *dirtomon(int dir);

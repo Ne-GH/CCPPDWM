@@ -585,12 +585,28 @@ void Monitor::arrange() {
 
 }
 
+/*******************************************************************************
+ * 根据当前的布局策略来重新排列客户端窗口。不同的布局策略会导致窗口的不同排列方式，例如平铺、浮动等。
+*******************************************************************************/
 void Monitor::arrangemon() {
-
+    strncpy(ltsymbol, lt[sellt]->symbol, sizeof ltsymbol);
+    if (lt[sellt]->arrange)
+        lt[sellt]->arrange(this);
 }
 
 void Monitor::cleanupmon() {
+    Monitor *m;
 
+    if (this == mons)
+        mons = mons->next;
+    else {
+        for (m = mons; m && m->next != this; m = m->next);
+        m->next = next;
+    }
+    XUnmapWindow(dpy, barwin);
+    XDestroyWindow(dpy, barwin);
+//    free(mon);
+    delete this;
 }
 
 Monitor *Monitor::createmon(void) {
@@ -720,24 +736,17 @@ void arrange(Monitor *m) {
 
 	if (m) {
         // 根据当前的布局策略来重新排列客户端窗口。不同的布局策略会导致窗口的不同排列方式，例如平铺、浮动等。
-		arrangemon(m);
+		m->arrangemon();
         // 重新排列监视器上的窗口，确保它们的层叠顺序正确。这是因为窗口的层叠顺序可能会受到其他窗口的遮挡或影响。
 		restack(m);
 	}
     else {
         for (m = mons; m; m = m->next)
-            arrangemon(m);
+            m->arrangemon();
     }
 }
 
-/*******************************************************************************
- * 根据当前的布局策略来重新排列客户端窗口。不同的布局策略会导致窗口的不同排列方式，例如平铺、浮动等。
-*******************************************************************************/
-void arrangemon(Monitor *m) {
-	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
-	if (m->lt[m->sellt]->arrange)
-		m->lt[m->sellt]->arrange(m);
-}
+
 
 
 
@@ -805,21 +814,7 @@ void buttonpress(XEvent *e) {
 
 
 
-void
-cleanupmon(Monitor *mon)
-{
-	Monitor *m;
 
-	if (mon == mons)
-		mons = mons->next;
-	else {
-		for (m = mons; m && m->next != mon; m = m->next);
-		m->next = mon->next;
-	}
-	XUnmapWindow(dpy, mon->barwin);
-	XDestroyWindow(dpy, mon->barwin);
-	free(mon);
-}
 
 /*******************************************************************************
  * 处理客户端窗口发送的客户端消息事件
@@ -2079,7 +2074,7 @@ int updategeom(void) {
 			}
 			if (m == selmon)
 				selmon = mons;
-			cleanupmon(m);
+			m->cleanupmon();
 		}
 		free(unique);
 	} else
@@ -2341,7 +2336,7 @@ void Dwm::CleanUp(void) {
     XUngrabKey(dpy, AnyKey, AnyModifier, root);
     // 循环释放所有监视器
     while (mons)
-    cleanupmon(mons);
+    mons->cleanupmon();
     // 释放所有光标
     for (i = 0; i < CurLast; i++)
     drw_cur_free(drw, cursor[i]);
