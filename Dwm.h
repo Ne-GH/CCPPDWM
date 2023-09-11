@@ -166,12 +166,12 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static void tile(Monitor *m);
 static void updatebarpos(Monitor *m);
 static void monocle(Monitor *m);
 static void arrange(Monitor *m);
 static Monitor *createmon(void);
 static Monitor *recttomon(int x, int y, int w, int h);
+static void tile(Monitor *m);
 
 
 
