@@ -177,7 +177,6 @@ static Monitor *recttomon(int x, int y, int w, int h);
 static void restack(Monitor *m);
 static void tile(Monitor *m);
 static void updatebarpos(Monitor *m);
-static Monitor *wintomon(Window w);
 
 
 
