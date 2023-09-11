@@ -56,8 +56,9 @@ public:
     void applyrules();
     void attach();
     void detach();
-
     void detachstack();
+
+
     void focus();
     void pop();
     void updatesizehints();
