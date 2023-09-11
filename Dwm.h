@@ -180,7 +180,6 @@ static void zoom(const Arg *arg);
 
 
 static void applyrules(Client *c);
-static void attach(Client *c);
 static void detach(Client *c);
 static void detachstack(Client *c);
 static void focus(Client *c);

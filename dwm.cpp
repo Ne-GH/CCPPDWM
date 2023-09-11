@@ -186,7 +186,8 @@ void Client::applyrules() {
 }
 
 void Client::attach() {
-
+    next = mon->clients;
+    mon->clients = this;
 }
 
 void Client::detach() {
@@ -349,12 +350,7 @@ void arrangemon(Monitor *m) {
 		m->lt[m->sellt]->arrange(m);
 }
 
-void
-attach(Client *c)
-{
-	c->next = c->mon->clients;
-	c->mon->clients = c;
-}
+
 
 
 
@@ -1058,7 +1054,7 @@ void manage(Window w, XWindowAttributes *wa) {
 		XRaiseWindow(dpy, c->win);
 
     // 将窗口添加到监视器的窗口链表中,确保正确的层叠顺序
-	attach(c);
+	c->attach();
 	c->attachstack();
     // 将窗口 c->win 添加到根窗口的 _NET_CLIENT_LIST 属性中，这是 EWMH（扩展窗口管理器提示协议）的一部分，用于跟踪所有客户端窗口。
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
@@ -1219,7 +1215,7 @@ void
 pop(Client *c)
 {
 	detach(c);
-	attach(c);
+	c->attach();
 	focus(c);
 	arrange(c->mon);
 }
@@ -1401,7 +1397,7 @@ sendmon(Client *c, Monitor *m)
 	detachstack(c);
 	c->mon = m;
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
-	attach(c);
+	c->attach();
 	c->attachstack();
 	focus(NULL);
 	arrange(NULL);
@@ -1861,7 +1857,7 @@ int updategeom(void) {
 				m->clients = c->next;
 				detachstack(c);
 				c->mon = mons;
-				attach(c);
+				c->attach();
 				c->attachstack();
 			}
 			if (m == selmon)
