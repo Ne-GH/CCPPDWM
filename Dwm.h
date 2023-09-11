@@ -179,10 +179,8 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static void updatewmhints(Client *c);
 static void setfocus(Client *c);
 static void showhide(Client *c);
-static void updatesizehints(Client *c);
 static void attachstack(Client *c);
 static void applyrules(Client *c);
 static void attach(Client *c);
@@ -190,6 +188,7 @@ static void detach(Client *c);
 static void detachstack(Client *c);
 static void focus(Client *c);
 static void pop(Client *c);
+static void updatesizehints(Client *c);
 
 static Client *nexttiled(Client *c);
 static void unfocus(Client *c, int setfocus);

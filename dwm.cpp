@@ -143,7 +143,19 @@ void Client::updatewindowtype() {
 }
 
 void Client::updatewmhints() {
-
+    XWMHints *wmh;
+    if ((wmh = XGetWMHints(dpy, win))) {
+        if (this == selmon->sel && wmh->flags & XUrgencyHint) {
+            wmh->flags &= ~XUrgencyHint;
+            XSetWMHints(dpy, win, wmh);
+        } else
+            isurgent = (wmh->flags & XUrgencyHint) ? 1 : 0;
+        if (wmh->flags & InputHint)
+            neverfocus = !wmh->input;
+        else
+            neverfocus = 0;
+        XFree(wmh);
+    }
 }
 
 void Client::setfocus() {
@@ -1033,7 +1045,7 @@ void manage(Window w, XWindowAttributes *wa) {
 //	configure(c); /* propagates border_width, if size doesn't change */
 	c->updatewindowtype();
 	updatesizehints(c);
-	updatewmhints(c);
+	c->updatewmhints();
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
     // 不激活按钮事件,用于支持鼠标操作
 	grabbuttons(c, 0);
@@ -1233,7 +1245,7 @@ propertynotify(XEvent *e)
 			c->hintsvalid = 0;
 			break;
 		case XA_WM_HINTS:
-			updatewmhints(c);
+			c->updatewmhints();
 			drawbars();
 			break;
 		}
@@ -1959,24 +1971,6 @@ void updatestatus(void) {
 
 
 
-void
-updatewmhints(Client *c)
-{
-	XWMHints *wmh;
-
-	if ((wmh = XGetWMHints(dpy, c->win))) {
-		if (c == selmon->sel && wmh->flags & XUrgencyHint) {
-			wmh->flags &= ~XUrgencyHint;
-			XSetWMHints(dpy, c->win, wmh);
-		} else
-			c->isurgent = (wmh->flags & XUrgencyHint) ? 1 : 0;
-		if (wmh->flags & InputHint)
-			c->neverfocus = !wmh->input;
-		else
-			c->neverfocus = 0;
-		XFree(wmh);
-	}
-}
 
 void
 view(const Arg *arg)
