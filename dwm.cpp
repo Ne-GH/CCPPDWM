@@ -631,8 +631,58 @@ Monitor *Monitor::dirtomon(int dir) {
     return m;
 }
 
+/*******************************************************************************
+ * 重绘特定监视器的状态栏
+*******************************************************************************/
 void Monitor::drawbar() {
+    int x, w, tw = 0;
+    int boxs = drw->fonts->h / 9;
+    int boxw = drw->fonts->h / 6 + 2;
+    unsigned int i, occ = 0, urg = 0;
+    Client *c;
 
+    if (!showbar)
+        return;
+
+    /* draw status first so it can be overdrawn by tags later */
+    if (this == selmon) { /* status is only drawn on selected monitor */
+        drw_setscheme(drw, scheme[SchemeNorm]);
+        tw = TEXTW(stext) - lrpad + 2; /* 2px right padding */
+        drw_text(drw, ww - tw, 0, tw, bh, 0, stext, 0);
+    }
+
+    for (c = clients; c; c = c->next) {
+        occ |= c->tags;
+        if (c->isurgent)
+            urg |= c->tags;
+    }
+    x = 0;
+    for (i = 0; i < LENGTH(tags); i++) {
+        w = TEXTW(tags[i]);
+        drw_setscheme(drw, scheme[tagset[seltags] & 1 << i ? SchemeSel : SchemeNorm]);
+        drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
+        if (occ & 1 << i)
+            drw_rect(drw, x + boxs, boxs, boxw, boxw,
+                     this == selmon && selmon->sel && selmon->sel->tags & 1 << i,
+                     urg & 1 << i);
+        x += w;
+    }
+    w = TEXTW(ltsymbol);
+    drw_setscheme(drw, scheme[SchemeNorm]);
+    x = drw_text(drw, x, 0, w, bh, lrpad / 2, ltsymbol, 0);
+
+    if ((w = ww - tw - x) > bh) {
+        if (sel) {
+            drw_setscheme(drw, scheme[this == selmon ? SchemeSel : SchemeNorm]);
+            drw_text(drw, x, 0, w, bh, lrpad / 2,sel->name, 0);
+            if (sel->isfloating)
+                drw_rect(drw, x + boxs, boxs, boxw, boxw, sel->isfixed, 0);
+        } else {
+            drw_setscheme(drw, scheme[SchemeNorm]);
+            drw_rect(drw, x, 0, w, bh, 1, 1);
+        }
+    }
+    drw_map(drw, barwin, 0, 0, ww, bh);
 }
 
 void Monitor::monocle() {
@@ -644,11 +694,54 @@ Monitor *Monitor::recttomon(int x, int y, int w, int h) {
 }
 
 void Monitor::restack() {
+    Client *c;
+    XEvent ev;
+    XWindowChanges wc;
 
+    drawbar();
+    if (!sel)
+        return;
+    if (sel->isfloating || !lt[sellt]->arrange)
+        XRaiseWindow(dpy, sel->win);
+    if (lt[sellt]->arrange) {
+        wc.stack_mode = Below;
+        wc.sibling = barwin;
+        for (c = stack; c; c = c->snext)
+            if (!c->isfloating && ISVISIBLE(c)) {
+                XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
+                wc.sibling = c->win;
+            }
+    }
+    XSync(dpy, False);
+    while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
 
-void Monitor::tile() {
+void
+tile(Monitor *m)
+{
+    unsigned int i, n, h, mw, my, ty;
+    Client *c;
 
+    for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
+    if (n == 0)
+        return;
+
+    if (n > m->nmaster)
+        mw = m->nmaster ? m->ww * m->mfact : 0;
+    else
+        mw = m->ww;
+    for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
+        if (i < m->nmaster) {
+            h = (m->wh - my) / (MIN(n, m->nmaster) - i);
+            resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+            if (my + HEIGHT(c) < m->wh)
+                my += HEIGHT(c);
+        } else {
+            h = (m->wh - ty) / (n - i);
+            resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+            if (ty + HEIGHT(c) < m->wh)
+                ty += HEIGHT(c);
+        }
 }
 
 void Monitor::updatebarpos() {
@@ -752,7 +845,7 @@ void arrange(Monitor *m) {
         // 根据当前的布局策略来重新排列客户端窗口。不同的布局策略会导致窗口的不同排列方式，例如平铺、浮动等。
 		m->arrangemon();
         // 重新排列监视器上的窗口，确保它们的层叠顺序正确。这是因为窗口的层叠顺序可能会受到其他窗口的遮挡或影响。
-		restack(m);
+		m->restack();
 	}
     else {
         for (m = mons; m; m = m->next)
@@ -812,7 +905,7 @@ void buttonpress(XEvent *e) {
     else if ((c = Client::wintoclient(ev->window))) {
 		focus(c);
         // 重新排列当前监视器上的窗口
-		restack(selmon);
+        selmon->restack();
         // 允许X服务器记录并重放事件，确保鼠标点击事件能够正常工作
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 		click = ClkClientWin;
@@ -983,62 +1076,6 @@ void destroynotify(XEvent *e) {
 
 
 
-/*******************************************************************************
- * 重绘特定监视器的状态栏
- * TODO
-*******************************************************************************/
-void
-drawbar(Monitor *m)
-{
-	int x, w, tw = 0;
-	int boxs = drw->fonts->h / 9;
-	int boxw = drw->fonts->h / 6 + 2;
-	unsigned int i, occ = 0, urg = 0;
-	Client *c;
-
-	if (!m->showbar)
-		return;
-
-	/* draw status first so it can be overdrawn by tags later */
-	if (m == selmon) { /* status is only drawn on selected monitor */
-		drw_setscheme(drw, scheme[SchemeNorm]);
-		tw = TEXTW(stext) - lrpad + 2; /* 2px right padding */
-		drw_text(drw, m->ww - tw, 0, tw, bh, 0, stext, 0);
-	}
-
-	for (c = m->clients; c; c = c->next) {
-		occ |= c->tags;
-		if (c->isurgent)
-			urg |= c->tags;
-	}
-	x = 0;
-	for (i = 0; i < LENGTH(tags); i++) {
-		w = TEXTW(tags[i]);
-		drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
-		drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
-		if (occ & 1 << i)
-			drw_rect(drw, x + boxs, boxs, boxw, boxw,
-				m == selmon && selmon->sel && selmon->sel->tags & 1 << i,
-				urg & 1 << i);
-		x += w;
-	}
-	w = TEXTW(m->ltsymbol);
-	drw_setscheme(drw, scheme[SchemeNorm]);
-	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
-
-	if ((w = m->ww - tw - x) > bh) {
-		if (m->sel) {
-			drw_setscheme(drw, scheme[m == selmon ? SchemeSel : SchemeNorm]);
-			drw_text(drw, x, 0, w, bh, lrpad / 2, m->sel->name, 0);
-			if (m->sel->isfloating)
-				drw_rect(drw, x + boxs, boxs, boxw, boxw, m->sel->isfixed, 0);
-		} else {
-			drw_setscheme(drw, scheme[SchemeNorm]);
-			drw_rect(drw, x, 0, w, bh, 1, 1);
-		}
-	}
-	drw_map(drw, m->barwin, 0, 0, m->ww, bh);
-}
 
 void
 drawbars(void)
@@ -1046,7 +1083,7 @@ drawbars(void)
 	Monitor *m;
 
 	for (m = mons; m; m = m->next)
-		drawbar(m);
+		m->drawbar();
 }
 
 /*******************************************************************************
@@ -1087,7 +1124,7 @@ void expose(XEvent *e) {
     // 获取事件所在的监视器
 	if (ev->count == 0 && (m = Monitor::wintomon(ev->window)))
         // 重绘该监视器上的状态栏
-		drawbar(m);
+		m->drawbar();
 }
 
 /*******************************************************************************
@@ -1165,7 +1202,7 @@ focusstack(const Arg *arg)
 	}
 	if (c) {
 		focus(c);
-		restack(selmon);
+		selmon->restack();
 	}
 }
 
@@ -1474,7 +1511,7 @@ movemouse(const Arg *arg)
 		return;
 	if (c->isfullscreen) /* no support moving fullscreen windows by mouse */
 		return;
-	restack(selmon);
+	selmon->restack();
 	ocx = c->x;
 	ocy = c->y;
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
@@ -1560,7 +1597,7 @@ propertynotify(XEvent *e)
 		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
             c->updatetitle();
 			if (c == c->mon->sel)
-				drawbar(c->mon);
+				c->mon->drawbar();
 		}
 		if (ev->atom == netatom[NetWMWindowType])
             c->updatewindowtype();
@@ -1623,7 +1660,7 @@ resizemouse(const Arg *arg)
 		return;
 	if (c->isfullscreen) /* no support resizing fullscreen windows by mouse */
 		return;
-	restack(selmon);
+	selmon->restack();
 	ocx = c->x;
 	ocy = c->y;
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
@@ -1667,30 +1704,7 @@ resizemouse(const Arg *arg)
 	}
 }
 
-void
-restack(Monitor *m)
-{
-	Client *c;
-	XEvent ev;
-	XWindowChanges wc;
 
-	drawbar(m);
-	if (!m->sel)
-		return;
-	if (m->sel->isfloating || !m->lt[m->sellt]->arrange)
-		XRaiseWindow(dpy, m->sel->win);
-	if (m->lt[m->sellt]->arrange) {
-		wc.stack_mode = Below;
-		wc.sibling = m->barwin;
-		for (c = m->stack; c; c = c->snext)
-			if (!c->isfloating && ISVISIBLE(c)) {
-				XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
-				wc.sibling = c->win;
-			}
-	}
-	XSync(dpy, False);
-	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
-}
 
 
 
@@ -1731,7 +1745,7 @@ setlayout(const Arg *arg)
 	if (selmon->sel)
 		arrange(selmon);
 	else
-		drawbar(selmon);
+		selmon->drawbar();
 }
 
 /* arg > 1.0 will set mfact absolutely */
@@ -1819,33 +1833,7 @@ tagmon(const Arg *arg)
 	sendmon(selmon->sel, Monitor::dirtomon(arg->i));
 }
 
-void
-tile(Monitor *m)
-{
-	unsigned int i, n, h, mw, my, ty;
-	Client *c;
 
-	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
-	if (n == 0)
-		return;
-
-	if (n > m->nmaster)
-		mw = m->nmaster ? m->ww * m->mfact : 0;
-	else
-		mw = m->ww;
-	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-		if (i < m->nmaster) {
-			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
-			if (my + HEIGHT(c) < m->wh)
-				my += HEIGHT(c);
-		} else {
-			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
-			if (ty + HEIGHT(c) < m->wh)
-				ty += HEIGHT(c);
-		}
-}
 
 void
 togglebar(const Arg *arg)
@@ -2125,7 +2113,7 @@ void updatestatus(void) {
         // 获取成功时使用获取的文本，获取失败默认使用dwm-VERSION
 		strcpy(stext, "dwm-" VERSION);
     // 传递当前选中的监视器，以便重新绘制状态栏，以显示更新后的文本
-	drawbar(selmon);
+	selmon->drawbar();
 }
 
 
