@@ -178,8 +178,6 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
-static void focus(Client *c);
-static void updatesizehints(Client *c);
 
 static Client *nexttiled(Client *c);
 static void unfocus(Client *c, int setfocus);
@@ -196,3 +194,4 @@ static Atom getatomprop(Client *c, Atom prop);
 
 // TODO
 static void showhide(Client *c);
+static void focus(Client *c);

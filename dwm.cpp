@@ -290,7 +290,45 @@ void Client::showhide() {
 }
 
 void Client::updatesizehints() {
+    long msize;
+    XSizeHints size;
 
+    if (!XGetWMNormalHints(dpy, win, &size, &msize))
+        /* size is uninitialized, ensure that size.flags aren't used */
+        size.flags = PSize;
+    if (size.flags & PBaseSize) {
+        basew = size.base_width;
+        baseh = size.base_height;
+    } else if (size.flags & PMinSize) {
+        basew = size.min_width;
+        baseh = size.min_height;
+    } else
+        basew = baseh = 0;
+    if (size.flags & PResizeInc) {
+        incw = size.width_inc;
+        inch = size.height_inc;
+    } else
+        incw = inch = 0;
+    if (size.flags & PMaxSize) {
+        maxw = size.max_width;
+        maxh = size.max_height;
+    } else
+        maxw = maxh = 0;
+    if (size.flags & PMinSize) {
+        minw = size.min_width;
+        minh = size.min_height;
+    } else if (size.flags & PBaseSize) {
+        minw = size.base_width;
+        minh = size.base_height;
+    } else
+        minw = minh = 0;
+    if (size.flags & PAspect) {
+        mina = (float)size.min_aspect.y / size.min_aspect.x;
+        maxa = (float)size.max_aspect.x / size.max_aspect.y;
+    } else
+        maxa = mina = 0.0;
+    isfixed = (maxw && maxh && maxw == minw && maxh == minh);
+    hintsvalid = 1;
 }
 
 void Client::attachstack() {
@@ -416,7 +454,7 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 		*w = bh;
 	if (resizehints || c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
 		if (!c->hintsvalid)
-			updatesizehints(c);
+			c->updatesizehints();
 		/* see last two sentences in ICCCM 4.1.2.3 */
 		baseismin = c->basew == c->minw && c->baseh == c->minh;
 		if (!baseismin) { /* temporarily remove base dimensions */
@@ -1154,7 +1192,7 @@ void manage(Window w, XWindowAttributes *wa) {
     c->configure();
 //	configure(c); /* propagates border_width, if size doesn't change */
 	c->updatewindowtype();
-	updatesizehints(c);
+	c->updatesizehints();
 	c->updatewmhints();
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
     // 不激活按钮事件,用于支持鼠标操作
@@ -2006,49 +2044,7 @@ updatenumlockmask(void)
 	XFreeModifiermap(modmap);
 }
 
-void
-updatesizehints(Client *c)
-{
-	long msize;
-	XSizeHints size;
 
-	if (!XGetWMNormalHints(dpy, c->win, &size, &msize))
-		/* size is uninitialized, ensure that size.flags aren't used */
-		size.flags = PSize;
-	if (size.flags & PBaseSize) {
-		c->basew = size.base_width;
-		c->baseh = size.base_height;
-	} else if (size.flags & PMinSize) {
-		c->basew = size.min_width;
-		c->baseh = size.min_height;
-	} else
-		c->basew = c->baseh = 0;
-	if (size.flags & PResizeInc) {
-		c->incw = size.width_inc;
-		c->inch = size.height_inc;
-	} else
-		c->incw = c->inch = 0;
-	if (size.flags & PMaxSize) {
-		c->maxw = size.max_width;
-		c->maxh = size.max_height;
-	} else
-		c->maxw = c->maxh = 0;
-	if (size.flags & PMinSize) {
-		c->minw = size.min_width;
-		c->minh = size.min_height;
-	} else if (size.flags & PBaseSize) {
-		c->minw = size.base_width;
-		c->minh = size.base_height;
-	} else
-		c->minw = c->minh = 0;
-	if (size.flags & PAspect) {
-		c->mina = (float)size.min_aspect.y / size.min_aspect.x;
-		c->maxa = (float)size.max_aspect.x / size.max_aspect.y;
-	} else
-		c->maxa = c->mina = 0.0;
-	c->isfixed = (c->maxw && c->maxh && c->maxw == c->minw && c->maxh == c->minh);
-	c->hintsvalid = 1;
-}
 
 /*******************************************************************************
  * 更新状态栏上的文本内容
