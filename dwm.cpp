@@ -129,8 +129,17 @@ void Client::updatetitle() {
         strcpy(name, broken);
 }
 
+/*******************************************************************************
+ * 更新窗口属性
+*******************************************************************************/
 void Client::updatewindowtype() {
+    Atom state = getatomprop(this, netatom[NetWMState]);
+    Atom wtype = getatomprop(this, netatom[NetWMWindowType]);
 
+    if (state == netatom[NetWMFullscreen])
+        setfullscreen(this, 1);
+    if (wtype == netatom[NetWMWindowTypeDialog])
+        isfloating = 1;
 }
 
 void Client::updatewmhints() {
@@ -1022,7 +1031,7 @@ void manage(Window w, XWindowAttributes *wa) {
     // 重绘
     c->configure();
 //	configure(c); /* propagates border_width, if size doesn't change */
-	updatewindowtype(c);
+	c->updatewindowtype();
 	updatesizehints(c);
 	updatewmhints(c);
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
@@ -1234,7 +1243,7 @@ propertynotify(XEvent *e)
 				drawbar(c->mon);
 		}
 		if (ev->atom == netatom[NetWMWindowType])
-			updatewindowtype(c);
+            c->updatewindowtype();
 	}
 }
 
@@ -1949,18 +1958,6 @@ void updatestatus(void) {
 }
 
 
-/*******************************************************************************
- * 更新窗口属性
-*******************************************************************************/
-void updatewindowtype(Client *c) {
-	Atom state = getatomprop(c, netatom[NetWMState]);
-	Atom wtype = getatomprop(c, netatom[NetWMWindowType]);
-
-	if (state == netatom[NetWMFullscreen])
-		setfullscreen(c, 1);
-	if (wtype == netatom[NetWMWindowTypeDialog])
-		c->isfloating = 1;
-}
 
 void
 updatewmhints(Client *c)
