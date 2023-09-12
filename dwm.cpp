@@ -206,8 +206,7 @@ int XError(Display *dpy, XErrorEvent *ee)
         || (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
         || (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
         return 0;
-    fprintf(stderr, "dwm: fatal error: request code=%d, error code=%d\n",
-            ee->request_code, ee->error_code);
+    std::cerr << "dwm: fatel error: request code=" << ee->request_code << ", error code=" << ee->error_code << std::endl;
     return xerrorxlib(dpy, ee); /* may call exit */
 }
 
