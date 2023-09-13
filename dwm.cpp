@@ -1249,7 +1249,7 @@ movemouse(const Arg *arg)
 	ocx = c->x;
 	ocy = c->y;
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
-		None, cursor[CurMove]->cursor, CurrentTime) != GrabSuccess)
+		None, cursor[CurMove]->_cursor, CurrentTime) != GrabSuccess)
 		return;
 	if (!getrootptr(&x, &y))
 		return;
@@ -1363,7 +1363,7 @@ resizemouse(const Arg *arg)
 	ocx = c->x;
 	ocy = c->y;
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
-		None, cursor[CurResize]->cursor, CurrentTime) != GrabSuccess)
+		None, cursor[CurResize]->_cursor, CurrentTime) != GrabSuccess)
 		return;
 	XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
 	do {
@@ -1642,7 +1642,7 @@ void updatebars(void) {
 				CopyFromParent, DefaultVisual(dpy, screen),
 				CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
         // 为窗口设置光标
-		XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
+		XDefineCursor(dpy, m->barwin, cursor[CurNormal]->_cursor);
         // 将窗口映射到显示中以显示状态栏
 		XMapRaised(dpy, m->barwin);
         // 使其他程序可以识别设置的窗口的类名和实例名，此处为dwm
@@ -1901,11 +1901,17 @@ void Dwm::SetUp(void) {
 
     // 初始化鼠标
     // 普通鼠标
-    cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
+  //  cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
     // 调整窗口大小的鼠标
-    cursor[CurResize] = drw_cur_create(drw, XC_sizing);
+    //cursor[CurResize] = drw_cur_create(drw, XC_sizing);
     // 移动窗口的鼠标
-    cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+    //cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+
+    cursor[CurNormal] = new Cur(drw,XC_left_ptr);
+    // 调整窗口大小的鼠标
+    cursor[CurResize] = new Cur(drw,XC_sizing);
+    // 移动窗口的鼠标
+    cursor[CurMove] = new Cur(drw,XC_fleur);
 
     /* init appearance */
     // 初始化外观,(创建颜色集合)
@@ -1944,7 +1950,7 @@ void Dwm::SetUp(void) {
     //    设置光标为正常状态下的光标形状。
     //    设置事件掩码，以便根窗口能够监听并处理多种事件，包括窗口结构变化、鼠标按钮按下、鼠标指针移动、鼠标进入和离开窗口、窗口属性变化等。
     //    使用 XChangeWindowAttributes 函数和 XSelectInput 函数分别为根窗口设置事件属性和事件监听。
-    wa.cursor = cursor[CurNormal]->cursor;
+    wa.cursor = cursor[CurNormal]->_cursor;
     /*SubstructureRedirectMask：表示子窗口重定向事件，通常用于捕获窗口创建和销毁事件。
     SubstructureNotifyMask：表示子窗口通知事件，通常用于捕获子窗口的改变事件，如改变大小或移动。
     ButtonPressMask：表示鼠标按钮按下事件，用于捕获鼠标按键的点击事件。
@@ -1990,7 +1996,8 @@ void Dwm::CleanUp(void) {
         mons->cleanupmon();
     // 释放所有光标
     for (i = 0; i < CurLast; i++)
-        drw_cur_free(drw, cursor[i]);
+        delete cursor[i];
+//        drw_cur_free(drw, cursor[i]);
     // 释放所有颜色方案
     for (i = 0; i < LENGTH(colors); i++)
         free(scheme[i]);
