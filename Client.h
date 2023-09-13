@@ -39,6 +39,8 @@ struct Client {
     Window win;//窗口的 X11 窗口句柄。
 
 public:
+    int Width();
+    int Height();
     bool IsVisible();
     /*******************************************************************************
      * 通过window编号在所有窗口中找到指向这个窗口的指针
