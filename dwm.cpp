@@ -14,7 +14,8 @@
 #include "util.h"
 
 /* variables */
-static const char broken[] = "broken";
+// static const char broken[] = "broken";
+inline static std::string broken = "broken";
 static char stext[256];
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
@@ -256,7 +257,7 @@ void Client::updatetitle() {
         gettextprop(win, XA_WM_NAME, name, sizeof name);
     // 如果没有获取到窗口的名称,将窗口的名称设置为“broken”
     if (name[0] == '\0') /* hack to mark broken clients,标记损坏的客户端 */
-        strcpy(name, broken);
+        strcpy(name, broken.c_str());
 }
 
 /*******************************************************************************
@@ -364,8 +365,8 @@ void Client::applyrules() {
     tags = 0;
     // 获取窗口的类别和实例信息，并存储在ch中
     XGetClassHint(dpy, win, &ch);
-    _class    = ch.res_class ? ch.res_class : broken;
-    instance = ch.res_name  ? ch.res_name  : broken;
+    _class    = ch.res_class ? ch.res_class : broken.c_str();
+    instance = ch.res_name  ? ch.res_name  : broken.c_str();
 
     for (int i = 0; i < LENGTH(rules); i++) {
         const Rule *r = &rules[i];
@@ -400,10 +401,12 @@ void Client::attach() {
 }
 
 void Client::detach() {
-    Client **tc;
+    //Client **tc;
+    Client *&tc = mon->clients;
 
-    for (tc = &mon->clients; *tc && *tc != this; tc = &(*tc)->next);
-    *tc = next;
+    for (; tc && tc != this; tc = tc->next)
+        ;
+    tc = next;
 }
 
 void Client::detachstack() {
@@ -414,7 +417,7 @@ void Client::detachstack() {
 
     Client *t;
     if (this == mon->sel) {
-        for (t = mon->stack; t && !ISVISIBLE(t); t = t->snext)
+        for (t = mon->stack; t && !t->IsVisible(); t = t->snext)
             ;
         mon->sel = t;
     }
@@ -580,6 +583,10 @@ Atom Client::getatomprop(Atom prop) {
     return atom;
 }
 
+bool Client::IsVisible() {
+    return ((tags & mon->tagset[mon->seltags]));
+}
+
 
 void Monitor::arrange() {
 
@@ -707,7 +714,7 @@ void Monitor::restack() {
         wc.stack_mode = Below;
         wc.sibling = barwin;
         for (c = stack; c; c = c->snext)
-            if (!c->isfloating && ISVISIBLE(c)) {
+            if (!c->isfloating && c->IsVisible()) {
                 XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
                 wc.sibling = c->win;
             }
@@ -927,8 +934,8 @@ drawbars(void)
 void
 focus(Client *c)
 {
-	if (!c || !ISVISIBLE(c))
-		for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext);
+	if (!c || !c->IsVisible())
+		for (c = selmon->stack; c && !c->IsVisible(); c = c->snext);
 	if (selmon->sel && selmon->sel != c)
 		unfocus(selmon->sel, 0);
 	if (c) {
@@ -973,16 +980,16 @@ focusstack(const Arg *arg)
 	if (!selmon->sel || (selmon->sel->isfullscreen && lockfullscreen))
 		return;
 	if (arg->i > 0) {
-		for (c = selmon->sel->next; c && !ISVISIBLE(c); c = c->next);
+		for (c = selmon->sel->next; c && !c->IsVisible(); c = c->next);
 		if (!c)
-			for (c = selmon->clients; c && !ISVISIBLE(c); c = c->next);
+			for (c = selmon->clients; c && !c->IsVisible(); c = c->next);
 	} else {
 		for (i = selmon->clients; i != selmon->sel; i = i->next)
-			if (ISVISIBLE(i))
+			if (i->IsVisible())
 				c = i;
 		if (!c)
 			for (; i; i = i->next)
-				if (ISVISIBLE(i))
+				if (i->IsVisible())
 					c = i;
 	}
 	if (c) {
@@ -1208,7 +1215,7 @@ monocle(Monitor *m)
 	Client *c;
 
 	for (c = m->clients; c; c = c->next)
-		if (ISVISIBLE(c))
+		if (c->IsVisible())
 			n++;
 	if (n > 0) /* override layout symbol */
 		snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
@@ -1280,7 +1287,7 @@ movemouse(const Arg *arg)
 Client *
 nexttiled(Client *c)
 {
-	for (; c && (c->isfloating || !ISVISIBLE(c)); c = c->next);
+	for (; c && (c->isfloating || !c->IsVisible()); c = c->next);
 	return c;
 }
 
@@ -1457,7 +1464,7 @@ setmfact(const Arg *arg)
 void showhide(Client *c) {
 	if (!c)
 		return;
-	if (ISVISIBLE(c)) {
+	if (c->IsVisible()) {
 		/* show clients top down */
 		XMoveWindow(dpy, c->win, c->x, c->y);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
@@ -2356,7 +2363,7 @@ configurerequest(XEvent *e)
                 c->y = m->my + (m->mh / 2 - HEIGHT(c) / 2); /* center in y direction */
             if ((ev->value_mask & (CWX|CWY)) && !(ev->value_mask & (CWWidth|CWHeight)))
                 c->configure();
-            if (ISVISIBLE(c))
+            if (c->IsVisible())
                 XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
         } else
             c->configure();
