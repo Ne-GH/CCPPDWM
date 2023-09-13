@@ -420,7 +420,7 @@ void Client::detachstack() {
 
     Client *t;
     if (this == mon->sel) {
-        for (t = mon->stack; t && !ISVISIBLE(t); t = t->snext)
+        for (t = mon->stack; t && !t->IsVisible(); t = t->snext)
             ;
         mon->sel = t;
     }
@@ -594,6 +594,10 @@ int Client::Height() {
     return (h + 2 * bw);
 }
 
+bool Client::IsVisible() {
+    return (tags & mon->tagset[mon->seltags]);
+}
+
 
 void Monitor::arrange() {
 
@@ -721,7 +725,7 @@ void Monitor::restack() {
         wc.stack_mode = Below;
         wc.sibling = barwin;
         for (c = stack; c; c = c->snext)
-            if (!c->isfloating && ISVISIBLE(c)) {
+            if (!c->isfloating && c->IsVisible()) {
                 XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
                 wc.sibling = c->win;
             }
@@ -941,8 +945,8 @@ drawbars(void)
 void
 focus(Client *c)
 {
-	if (!c || !ISVISIBLE(c))
-		for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext);
+	if (!c || !c->IsVisible())
+		for (c = selmon->stack; c && !c->IsVisible(); c = c->snext);
 	if (selmon->sel && selmon->sel != c)
 		unfocus(selmon->sel, 0);
 	if (c) {
@@ -987,16 +991,16 @@ focusstack(const Arg *arg)
 	if (!selmon->sel || (selmon->sel->isfullscreen && lockfullscreen))
 		return;
 	if (arg->i > 0) {
-		for (c = selmon->sel->next; c && !ISVISIBLE(c); c = c->next);
+		for (c = selmon->sel->next; c && !c->IsVisible(); c = c->next);
 		if (!c)
-			for (c = selmon->clients; c && !ISVISIBLE(c); c = c->next);
+			for (c = selmon->clients; c && !c->IsVisible(); c = c->next);
 	} else {
 		for (i = selmon->clients; i != selmon->sel; i = i->next)
-			if (ISVISIBLE(i))
+			if (i->IsVisible())
 				c = i;
 		if (!c)
 			for (; i; i = i->next)
-				if (ISVISIBLE(i))
+				if (i->IsVisible())
 					c = i;
 	}
 	if (c) {
@@ -1222,7 +1226,7 @@ monocle(Monitor *m)
 	Client *c;
 
 	for (c = m->clients; c; c = c->next)
-		if (ISVISIBLE(c))
+		if (c->IsVisible())
 			n++;
 	if (n > 0) /* override layout symbol */
 		snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
@@ -1294,7 +1298,7 @@ movemouse(const Arg *arg)
 Client *
 nexttiled(Client *c)
 {
-	for (; c && (c->isfloating || !ISVISIBLE(c)); c = c->next);
+	for (; c && (c->isfloating || !c->IsVisible()); c = c->next);
 	return c;
 }
 
@@ -1471,7 +1475,7 @@ setmfact(const Arg *arg)
 void showhide(Client *c) {
 	if (!c)
 		return;
-	if (ISVISIBLE(c)) {
+	if (c->IsVisible()) {
 		/* show clients top down */
 		XMoveWindow(dpy, c->win, c->x, c->y);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
@@ -2371,7 +2375,7 @@ configurerequest(XEvent *e)
                 c->y = m->my + (m->mh / 2 - c->Height() / 2); /* center in y direction */
             if ((ev->value_mask & (CWX|CWY)) && !(ev->value_mask & (CWWidth|CWHeight)))
                 c->configure();
-            if (ISVISIBLE(c))
+            if (c->IsVisible())
                 XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
         } else
             c->configure();
