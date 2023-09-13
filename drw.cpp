@@ -182,13 +182,6 @@ std::vector<Fnt*> drw_fontset_create(Drw* drw, std::vector<std::string>fonts, si
         }
     }
 
-//	for (int i = 1; i <= font_count; i++) {
-//        // 创建字体，参数为：绘图上下文，字体名称
-//		if ((cur = xfont_create(drw, fonts[font_count - i], NULL))) {
-//			cur->next = ret;
-//			ret = cur;
-//		}
-//	}
     drw->fonts = ret;
 	return ret;
 }
@@ -459,19 +452,7 @@ drw_font_getexts(Fnt *font, const char *text, unsigned int len, unsigned int *w,
 		*h = font->h;
 }
 
-/*******************************************************************************
- * 创建鼠标
- * 参数1：绘图上下文
- * 参数2：形状
-*******************************************************************************/
-//Cur* drw_cur_create(Drw *drw, int shape) {
-//	Cur *cur;
-//
-//	if (!drw || !(cur = (Cur *)ecalloc(1, sizeof(Cur))))
-//		return NULL;
-//	cur->_cursor = XCreateFontCursor(drw->dpy, shape);
-//	return cur;
-//}
+
 Cur::Cur(Drw *drw, int shape) {
     _cursor = XCreateFontCursor(drw->dpy,shape);
     _dpy = drw->dpy;
@@ -482,16 +463,3 @@ Cur::~Cur() {
         return;
     XFreeCursor(_dpy,_cursor);
 }
-
-
-//void
-//drw_cur_free(Drw *drw, Cur *cursor)
-//{
-//	if (!cursor)
-//		return;
-//
-//	XFreeCursor(drw->dpy, cursor->_cursor);
-//	free(cursor);
-//}
-
-
