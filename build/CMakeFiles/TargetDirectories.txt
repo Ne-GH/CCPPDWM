@@ -1,3 +1,0 @@
-/home/yongheng/DWM/build/CMakeFiles/CCPPDWM.dir
-/home/yongheng/DWM/build/CMakeFiles/edit_cache.dir
-/home/yongheng/DWM/build/CMakeFiles/rebuild_cache.dir
