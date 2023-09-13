@@ -611,7 +611,8 @@ cleanup(void)
 	while (mons)
 		cleanupmon(mons);
 	for (i = 0; i < CurLast; i++)
-		drw_cur_free(drw, cursor[i]);
+        delete cursor[i];
+//		drw_cur_free(drw, cursor[i]);
 	for (i = 0; i < LENGTH(colors); i++)
 		free(scheme[i]);
 	free(scheme);
@@ -1689,9 +1690,13 @@ setup(void)
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
 	/* init cursors */
-	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
-	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
-	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+//	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
+//	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
+//	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+
+    cursor[CurNormal] = new Cur(drw,XC_left_ptr);
+    cursor[CurResize] = new Cur(drw,XC_sizing);
+    cursor[CurMove] = new Cur(drw,XC_fleur);
 	/* init appearance */
 	scheme = (Clr**)ecalloc(LENGTH(colors), sizeof(Clr *));
 	for (i = 0; i < LENGTH(colors); i++)
