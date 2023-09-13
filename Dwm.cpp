@@ -170,7 +170,7 @@ static const Key keys[] = {
 
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
-static const Button buttons[] = {
+std::vector<Button> buttons = {
         /* click                event mask      button          function        argument */
         { ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
         { ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
@@ -558,7 +558,7 @@ void Client::grabbuttons(int focused) {
         if (!focused)
             XGrabButton(dpy, AnyButton, AnyModifier, win, False,
                         BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
-        for (i = 0; i < LENGTH(buttons); i++)
+        for (i = 0; i < buttons.size(); i++)
             if (buttons[i].click == ClkClientWin)
                 for (j = 0; j < LENGTH(modifiers); j++)
                     XGrabButton(dpy, buttons[i].button,
@@ -2177,7 +2177,7 @@ void buttonpress(XEvent *e) {
         click = ClkClientWin;
     }
     // 遍历config中定义的鼠标按键
-    for (int i = 0; i < LENGTH(buttons); i++)
+    for (int i = 0; i < buttons.size(); i++)
         if (click == buttons[i].click && buttons[i].func && buttons[i].button == ev->button
             && CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
             buttons[i].func(click == ClkTagBar && buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
