@@ -18,9 +18,9 @@ std::string broken = "broken";
 //static const char broken[] = "broken";
 static char stext[256];
 static int screen;
-static int sw, sh;           /* X display screen geometry width, height */
-static int bh;               /* bar height */
-static int lrpad;            /* sum of left and right padding for text */
+static int screen_width, screen_height;           /* X display screen geometry width, height */
+static int bar_height;               /* bar height */
+static int left_right_padding;            /* sum of left and right padding for text */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent]) (XEvent *) = {
@@ -125,7 +125,7 @@ static const Layout layouts[] = {
 	{ MODKEY|ControlMask|ShiftMask, KEY,      toggletag,      {.ui = 1 << TAG} },
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
-#define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
+#define SHCMD(cmd) { .v = (const char*[]){ "/bin/screen_height", "-c", cmd, NULL } }
 
 /* commands */
 static const char *dmenucmd[] = { "dmenu_run", "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
@@ -650,8 +650,8 @@ void Monitor::drawbar() {
     /* draw status first so it can be overdrawn by tags later */
     if (this == selmon) { /* status is only drawn on selected monitor */
         drw_setscheme(drw, scheme[SchemeNorm]);
-        tw = TEXTW(stext) - lrpad + 2; /* 2px right padding */
-        drw_text(drw, ww - tw, 0, tw, bh, 0, stext, 0);
+        tw = TEXTW(stext) - left_right_padding + 2; /* 2px right padding */
+        drw_text(drw, ww - tw, 0, tw, bar_height, 0, stext, 0);
     }
 
     for (c = clients; c; c = c->next) {
@@ -663,7 +663,7 @@ void Monitor::drawbar() {
     for (i = 0; i < LENGTH(tags); i++) {
         w = TEXTW(tags[i]);
         drw_setscheme(drw, scheme[tagset[seltags] & 1 << i ? SchemeSel : SchemeNorm]);
-        drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
+        drw_text(drw, x, 0, w, bar_height, left_right_padding / 2, tags[i], urg & 1 << i);
         if (occ & 1 << i)
             drw_rect(drw, x + boxs, boxs, boxw, boxw,
                      this == selmon && selmon->sel && selmon->sel->tags & 1 << i,
@@ -672,20 +672,20 @@ void Monitor::drawbar() {
     }
     w = TEXTW(ltsymbol);
     drw_setscheme(drw, scheme[SchemeNorm]);
-    x = drw_text(drw, x, 0, w, bh, lrpad / 2, ltsymbol, 0);
+    x = drw_text(drw, x, 0, w, bar_height, left_right_padding / 2, ltsymbol, 0);
 
-    if ((w = ww - tw - x) > bh) {
+    if ((w = ww - tw - x) > bar_height) {
         if (sel) {
             drw_setscheme(drw, scheme[this == selmon ? SchemeSel : SchemeNorm]);
-            drw_text(drw, x, 0, w, bh, lrpad / 2,sel->name.c_str(), 0);
+            drw_text(drw, x, 0, w, bar_height, left_right_padding / 2,sel->name.c_str(), 0);
             if (sel->isfloating)
                 drw_rect(drw, x + boxs, boxs, boxw, boxw, sel->isfixed, 0);
         } else {
             drw_setscheme(drw, scheme[SchemeNorm]);
-            drw_rect(drw, x, 0, w, bh, 1, 1);
+            drw_rect(drw, x, 0, w, bar_height, 1, 1);
         }
     }
-    drw_map(drw, barwin, 0, 0, ww, bh);
+    drw_map(drw, barwin, 0, 0, ww, bar_height);
 }
 
 void Monitor::monocle() {
@@ -751,12 +751,12 @@ void Monitor::updatebarpos() {
     wy = my;
     wh = mh;
     if (showbar) {
-        wh -= bh;
+        wh -= bar_height;
         by = topbar ? wy : wy + wh;
-        wy = topbar ? wy + bh : wy;
+        wy = topbar ? wy + bar_height : wy;
     }
     else
-        by = -bh;
+        by = -bar_height;
 }
 
 Monitor *Monitor::wintomon(Window w) {
@@ -784,10 +784,10 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 	*w = MAX(1, *w);
 	*h = MAX(1, *h);
 	if (interact) {
-		if (*x > sw)
-			*x = sw - WIDTH(c);
-		if (*y > sh)
-			*y = sh - HEIGHT(c);
+		if (*x > screen_width)
+			*x = screen_width - WIDTH(c);
+		if (*y > screen_height)
+			*y = screen_height - HEIGHT(c);
 		if (*x + *w + 2 * c->bw < 0)
 			*x = 0;
 		if (*y + *h + 2 * c->bw < 0)
@@ -802,10 +802,10 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 		if (*y + *h + 2 * c->bw <= m->wy)
 			*y = m->wy;
 	}
-	if (*h < bh)
-		*h = bh;
-	if (*w < bh)
-		*w = bh;
+	if (*h < bar_height)
+		*h = bar_height;
+	if (*w < bar_height)
+		*w = bar_height;
 	if (resizehints || c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
 		if (!c->hintsvalid)
 			c->updatesizehints();
@@ -1184,8 +1184,8 @@ void manage(Window w, XWindowAttributes *wa) {
     // 将窗口 c->win 添加到根窗口的 _NET_CLIENT_LIST 属性中，这是 EWMH（扩展窗口管理器提示协议）的一部分，用于跟踪所有客户端窗口。
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
-    // 函数将窗口移动到指定的位置和大小，通常将其偏移了 2 * sw（两倍的屏幕宽度）
-	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
+    // 函数将窗口移动到指定的位置和大小，通常将其偏移了 2 * screen_width（两倍的屏幕宽度）
+	XMoveResizeWindow(dpy, c->win, c->x + 2 * screen_width, c->y, c->w, c->h); /* some windows require this */
     // 设置客户端窗口的状态为正常状态NormalState
 	c->setclientstate(NormalState);
 	if (c->mon == selmon)
@@ -1527,7 +1527,7 @@ togglebar(const Arg *arg)
 {
 	selmon->showbar = !selmon->showbar;
 	selmon->updatebarpos();
-	XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
+	XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bar_height);
 	arrange(selmon);
 }
 
@@ -1626,7 +1626,7 @@ void updatebars(void) {
 		if (m->barwin)
 			continue;
         // 创建状态栏，参数包括窗口的位置、大小、深度等信息
-		m->barwin = XCreateWindow(dpy, root, m->wx, m->by, m->ww, bh, 0, DefaultDepth(dpy, screen),
+		m->barwin = XCreateWindow(dpy, root, m->wx, m->by, m->ww, bar_height, 0, DefaultDepth(dpy, screen),
 				CopyFromParent, DefaultVisual(dpy, screen),
 				CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
         // 为窗口设置光标
@@ -1732,10 +1732,10 @@ int updategeom(void) {
         // 默认的显示器设置
 		if (!mons)
 			mons = createmon();
-		if (mons->mw != sw || mons->mh != sh) {
+		if (mons->mw != screen_width || mons->mh != screen_height) {
 			dirty = 1;
-			mons->mw = mons->ww = sw;
-			mons->mh = mons->wh = sh;
+			mons->mw = mons->ww = screen_width;
+			mons->mh = mons->wh = screen_height;
 			mons->updatebarpos();
 		}
 	}
@@ -1837,22 +1837,22 @@ void Dwm::SetUp(void) {
     // 获取当前屏幕编号
     screen = DefaultScreen(dpy);
     // 获取当前屏幕宽度
-    sw = DisplayWidth(dpy, screen);
+    screen_width = DisplayWidth(dpy, screen);
     // 获取当前屏幕高度
-    sh = DisplayHeight(dpy, screen);
+    screen_height = DisplayHeight(dpy, screen);
     // 获取指定屏幕的根窗口
     root = RootWindow(dpy, screen);
 
     // 创建绘图上下文
-    drw = drw_create(dpy, screen, root, sw, sh);
+    drw = drw_create(dpy, screen, root, screen_width, screen_height);
     // 创建字体合集
     if (!drw_fontset_create(drw, fonts, fonts.size()))
         Die("no fonts could be loaded.");
 
     // 字体的高
-    lrpad = drw->fonts->h;
+    left_right_padding = drw->fonts->h;
     // 边的高度(bar height),能够容纳字体
-    bh = drw->fonts->h + 2;
+    bar_height = drw->fonts->h + 2;
 
     // 更新几何
     updategeom();
@@ -2302,21 +2302,21 @@ void configurenotify(XEvent *e) {
     **/
     if (ev->window == root) {
         // 计算变量 dirty，用于表示窗口的宽度或高度是否发生了变化
-        // 如果当前的窗口宽度 (sw) 或高度 (sh) 与配置通知事件中的宽度 (ev->width) 或高度 (ev->height) 不相等，则表示窗口的大小发生了变化。
-        dirty = (sw != ev->width || sh != ev->height);
-        sw = ev->width;
-        sh = ev->height;
+        // 如果当前的窗口宽度 (screen_width) 或高度 (screen_height) 与配置通知事件中的宽度 (ev->width) 或高度 (ev->height) 不相等，则表示窗口的大小发生了变化。
+        dirty = (screen_width != ev->width || screen_height != ev->height);
+        screen_width = ev->width;
+        screen_height = ev->height;
         // 更新窗口管理器的几何信息（例如监视器的位置和大小），
         // || 检查是否窗口的大小发生了变化 (dirty) 或几何信息需要更新。
         if (updategeom() || dirty) {
-            drw_resize(drw, sw, bh);
+            drw_resize(drw, screen_width, bar_height);
             updatebars();
             for (m = mons; m; m = m->next) {
                 for (c = m->clients; c; c = c->next)
                     if (c->isfullscreen)
                         resizeclient(c, m->mx, m->my, m->mw, m->mh);
                 // 移动和调整监视器上的状态栏的位置和大小，以适应新的监视器几何信息。
-                XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
+                XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bar_height);
             }
             focus(NULL);
             // 重新排列所有客户端，以适应新的窗口几何信息。
