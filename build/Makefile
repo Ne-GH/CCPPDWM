@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/yongheng/Projects/CCPPDWM
+CMAKE_SOURCE_DIR = /home/yongheng/DWM
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/yongheng/Projects/CCPPDWM/build
+CMAKE_BINARY_DIR = /home/yongheng/DWM/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -68,7 +68,7 @@ CMAKE_BINARY_DIR = /home/yongheng/Projects/CCPPDWM/build
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running CMake cache editor..."
-	/usr/bin/ccmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/usr/bin/cmake-gui -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yongheng/Projects/CCPPDWM/build/CMakeFiles /home/yongheng/Projects/CCPPDWM/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yongheng/DWM/build/CMakeFiles /home/yongheng/DWM/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yongheng/Projects/CCPPDWM/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yongheng/DWM/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -117,41 +117,89 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named untitled
+# Target rules for targets named CCPPDWM
 
 # Build rule for target.
-untitled: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 untitled
-.PHONY : untitled
+CCPPDWM: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CCPPDWM
+.PHONY : CCPPDWM
 
 # fast build rule for target.
-untitled/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/untitled.dir/build.make CMakeFiles/untitled.dir/build
-.PHONY : untitled/fast
+CCPPDWM/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/build
+.PHONY : CCPPDWM/fast
 
-main.o: main.cpp.o
-.PHONY : main.o
+drw.o: drw.cpp.o
+.PHONY : drw.o
 
 # target to build an object file
-main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/untitled.dir/build.make CMakeFiles/untitled.dir/main.cpp.o
-.PHONY : main.cpp.o
+drw.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/drw.cpp.o
+.PHONY : drw.cpp.o
 
-main.i: main.cpp.i
-.PHONY : main.i
+drw.i: drw.cpp.i
+.PHONY : drw.i
 
 # target to preprocess a source file
-main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/untitled.dir/build.make CMakeFiles/untitled.dir/main.cpp.i
-.PHONY : main.cpp.i
+drw.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/drw.cpp.i
+.PHONY : drw.cpp.i
 
-main.s: main.cpp.s
-.PHONY : main.s
+drw.s: drw.cpp.s
+.PHONY : drw.s
 
 # target to generate assembly for a file
-main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/untitled.dir/build.make CMakeFiles/untitled.dir/main.cpp.s
-.PHONY : main.cpp.s
+drw.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/drw.cpp.s
+.PHONY : drw.cpp.s
+
+dwm.o: dwm.cpp.o
+.PHONY : dwm.o
+
+# target to build an object file
+dwm.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/dwm.cpp.o
+.PHONY : dwm.cpp.o
+
+dwm.i: dwm.cpp.i
+.PHONY : dwm.i
+
+# target to preprocess a source file
+dwm.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/dwm.cpp.i
+.PHONY : dwm.cpp.i
+
+dwm.s: dwm.cpp.s
+.PHONY : dwm.s
+
+# target to generate assembly for a file
+dwm.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/dwm.cpp.s
+.PHONY : dwm.cpp.s
+
+util.o: util.cpp.o
+.PHONY : util.o
+
+# target to build an object file
+util.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/util.cpp.o
+.PHONY : util.cpp.o
+
+util.i: util.cpp.i
+.PHONY : util.i
+
+# target to preprocess a source file
+util.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/util.cpp.i
+.PHONY : util.cpp.i
+
+util.s: util.cpp.s
+.PHONY : util.s
+
+# target to generate assembly for a file
+util.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CCPPDWM.dir/build.make CMakeFiles/CCPPDWM.dir/util.cpp.s
+.PHONY : util.cpp.s
 
 # Help Target
 help:
@@ -161,10 +209,16 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... untitled"
-	@echo "... main.o"
-	@echo "... main.i"
-	@echo "... main.s"
+	@echo "... CCPPDWM"
+	@echo "... drw.o"
+	@echo "... drw.i"
+	@echo "... drw.s"
+	@echo "... dwm.o"
+	@echo "... dwm.i"
+	@echo "... dwm.s"
+	@echo "... util.o"
+	@echo "... util.i"
+	@echo "... util.s"
 .PHONY : help
 
 

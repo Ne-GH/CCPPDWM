@@ -14,8 +14,7 @@
 #include "util.h"
 
 /* variables */
-// static const char broken[] = "broken";
-inline static std::string broken = "broken";
+static const char broken[] = "broken";
 static char stext[256];
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
@@ -257,7 +256,7 @@ void Client::updatetitle() {
         gettextprop(win, XA_WM_NAME, name, sizeof name);
     // 如果没有获取到窗口的名称,将窗口的名称设置为“broken”
     if (name[0] == '\0') /* hack to mark broken clients,标记损坏的客户端 */
-        strcpy(name, broken.c_str());
+        strcpy(name, broken);
 }
 
 /*******************************************************************************
@@ -365,8 +364,8 @@ void Client::applyrules() {
     tags = 0;
     // 获取窗口的类别和实例信息，并存储在ch中
     XGetClassHint(dpy, win, &ch);
-    _class    = ch.res_class ? ch.res_class : broken.c_str();
-    instance = ch.res_name  ? ch.res_name  : broken.c_str();
+    _class    = ch.res_class ? ch.res_class : broken;
+    instance = ch.res_name  ? ch.res_name  : broken;
 
     for (int i = 0; i < LENGTH(rules); i++) {
         const Rule *r = &rules[i];
@@ -401,12 +400,10 @@ void Client::attach() {
 }
 
 void Client::detach() {
-    //Client **tc;
-    Client *&tc = mon->clients;
+    Client **tc;
 
-    for (; tc && tc != this; tc = tc->next)
-        ;
-    tc = next;
+    for (tc = &mon->clients; *tc && *tc != this; tc = &(*tc)->next);
+    *tc = next;
 }
 
 void Client::detachstack() {
@@ -417,7 +414,7 @@ void Client::detachstack() {
 
     Client *t;
     if (this == mon->sel) {
-        for (t = mon->stack; t && !t->IsVisible(); t = t->snext)
+        for (t = mon->stack; t && !ISVISIBLE(t); t = t->snext)
             ;
         mon->sel = t;
     }
@@ -583,18 +580,6 @@ Atom Client::getatomprop(Atom prop) {
     return atom;
 }
 
-bool Client::IsVisible() {
-    return ((tags & mon->tagset[mon->seltags]));
-}
-
-int Client::Width() {
-    return w + 2 * bw;
-}
-
-int Client::Height() {
-    return h + 2 * bw;
-}
-
 
 void Monitor::arrange() {
 
@@ -651,8 +636,8 @@ Monitor *Monitor::dirtomon(int dir) {
 *******************************************************************************/
 void Monitor::drawbar() {
     int x, w, tw = 0;
-    int boxs = drw->fonts[0]->h / 9;
-    int boxw = drw->fonts[0]->h / 6 + 2;
+    int boxs = drw->fonts->h / 9;
+    int boxw = drw->fonts->h / 6 + 2;
     unsigned int i, occ = 0, urg = 0;
     Client *c;
 
@@ -722,7 +707,7 @@ void Monitor::restack() {
         wc.stack_mode = Below;
         wc.sibling = barwin;
         for (c = stack; c; c = c->snext)
-            if (!c->isfloating && c->IsVisible()) {
+            if (!c->isfloating && ISVISIBLE(c)) {
                 XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
                 wc.sibling = c->win;
             }
@@ -749,13 +734,13 @@ tile(Monitor *m)
         if (i < m->nmaster) {
             h = (m->wh - my) / (MIN(n, m->nmaster) - i);
             resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
-            if (my + c->Height() < m->wh)
-                my += c->Height();
+            if (my + HEIGHT(c) < m->wh)
+                my += HEIGHT(c);
         } else {
             h = (m->wh - ty) / (n - i);
             resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
-            if (ty + c->Height() < m->wh)
-                ty += c->Height();
+            if (ty + HEIGHT(c) < m->wh)
+                ty += HEIGHT(c);
         }
 }
 
@@ -797,18 +782,18 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 	*h = MAX(1, *h);
 	if (interact) {
 		if (*x > sw)
-			*x = sw - c->Width();
+			*x = sw - WIDTH(c);
 		if (*y > sh)
-			*y = sh - c->Height();
+			*y = sh - HEIGHT(c);
 		if (*x + *w + 2 * c->bw < 0)
 			*x = 0;
 		if (*y + *h + 2 * c->bw < 0)
 			*y = 0;
 	} else {
 		if (*x >= m->wx + m->ww)
-			*x = m->wx + m->ww - c->Width();
+			*x = m->wx + m->ww - WIDTH(c);
 		if (*y >= m->wy + m->wh)
-			*y = m->wy + m->wh - c->Height();
+			*y = m->wy + m->wh - HEIGHT(c);
 		if (*x + *w + 2 * c->bw <= m->wx)
 			*x = m->wx;
 		if (*y + *h + 2 * c->bw <= m->wy)
@@ -942,8 +927,8 @@ drawbars(void)
 void
 focus(Client *c)
 {
-	if (!c || !c->IsVisible())
-		for (c = selmon->stack; c && !c->IsVisible(); c = c->snext);
+	if (!c || !ISVISIBLE(c))
+		for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext);
 	if (selmon->sel && selmon->sel != c)
 		unfocus(selmon->sel, 0);
 	if (c) {
@@ -988,16 +973,16 @@ focusstack(const Arg *arg)
 	if (!selmon->sel || (selmon->sel->isfullscreen && lockfullscreen))
 		return;
 	if (arg->i > 0) {
-		for (c = selmon->sel->next; c && !c->IsVisible(); c = c->next);
+		for (c = selmon->sel->next; c && !ISVISIBLE(c); c = c->next);
 		if (!c)
-			for (c = selmon->clients; c && !c->IsVisible(); c = c->next);
+			for (c = selmon->clients; c && !ISVISIBLE(c); c = c->next);
 	} else {
 		for (i = selmon->clients; i != selmon->sel; i = i->next)
-			if (i->IsVisible())
+			if (ISVISIBLE(i))
 				c = i;
 		if (!c)
 			for (; i; i = i->next)
-				if (i->IsVisible())
+				if (ISVISIBLE(i))
 					c = i;
 	}
 	if (c) {
@@ -1159,11 +1144,11 @@ void manage(Window w, XWindowAttributes *wa) {
 		c->applyrules();
 	}
     // 检查客户端窗口的右边界是否超出了当前监视器的右边界
-	if (c->x + c->Width() > c->mon->wx + c->mon->ww)
-		c->x = c->mon->wx + c->mon->ww - c->Width();
+	if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
+		c->x = c->mon->wx + c->mon->ww - WIDTH(c);
     // 检查客户端窗口的下边界是否超出了当前监视器的下边界
-	if (c->y + c->Height() > c->mon->wy + c->mon->wh)
-		c->y = c->mon->wy + c->mon->wh - c->Height();
+	if (c->y + HEIGHT(c) > c->mon->wy + c->mon->wh)
+		c->y = c->mon->wy + c->mon->wh - HEIGHT(c);
     // 确保窗口的 x 和 y 坐标不会小于当前监视器的左上角坐标，以防窗口完全移出了监视器的可见区域。
 	c->x = MAX(c->x, c->mon->wx);
 	c->y = MAX(c->y, c->mon->wy);
@@ -1223,7 +1208,7 @@ monocle(Monitor *m)
 	Client *c;
 
 	for (c = m->clients; c; c = c->next)
-		if (c->IsVisible())
+		if (ISVISIBLE(c))
 			n++;
 	if (n > 0) /* override layout symbol */
 		snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
@@ -1249,7 +1234,7 @@ movemouse(const Arg *arg)
 	ocx = c->x;
 	ocy = c->y;
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
-		None, cursor[CurMove]->_cursor, CurrentTime) != GrabSuccess)
+		None, cursor[CurMove]->cursor, CurrentTime) != GrabSuccess)
 		return;
 	if (!getrootptr(&x, &y))
 		return;
@@ -1270,12 +1255,12 @@ movemouse(const Arg *arg)
 			ny = ocy + (ev.xmotion.y - y);
 			if (abs(selmon->wx - nx) < snap)
 				nx = selmon->wx;
-			else if (abs((selmon->wx + selmon->ww) - (nx + c->Width())) < snap)
-				nx = selmon->wx + selmon->ww - c->Width();
+			else if (abs((selmon->wx + selmon->ww) - (nx + WIDTH(c))) < snap)
+				nx = selmon->wx + selmon->ww - WIDTH(c);
 			if (abs(selmon->wy - ny) < snap)
 				ny = selmon->wy;
-			else if (abs((selmon->wy + selmon->wh) - (ny + c->Height())) < snap)
-				ny = selmon->wy + selmon->wh - c->Height();
+			else if (abs((selmon->wy + selmon->wh) - (ny + HEIGHT(c))) < snap)
+				ny = selmon->wy + selmon->wh - HEIGHT(c);
 			if (!c->isfloating && selmon->lt[selmon->sellt]->arrange
 			&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
 				togglefloating(NULL);
@@ -1295,7 +1280,7 @@ movemouse(const Arg *arg)
 Client *
 nexttiled(Client *c)
 {
-	for (; c && (c->isfloating || !c->IsVisible()); c = c->next);
+	for (; c && (c->isfloating || !ISVISIBLE(c)); c = c->next);
 	return c;
 }
 
@@ -1363,7 +1348,7 @@ resizemouse(const Arg *arg)
 	ocx = c->x;
 	ocy = c->y;
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
-		None, cursor[CurResize]->_cursor, CurrentTime) != GrabSuccess)
+		None, cursor[CurResize]->cursor, CurrentTime) != GrabSuccess)
 		return;
 	XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
 	do {
@@ -1472,7 +1457,7 @@ setmfact(const Arg *arg)
 void showhide(Client *c) {
 	if (!c)
 		return;
-	if (c->IsVisible()) {
+	if (ISVISIBLE(c)) {
 		/* show clients top down */
 		XMoveWindow(dpy, c->win, c->x, c->y);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
@@ -1481,7 +1466,7 @@ void showhide(Client *c) {
 	} else {
 		/* hide clients bottom up */
 		showhide(c->snext);
-		XMoveWindow(dpy, c->win, c->Width() * -2, c->y);
+		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
 	}
 }
 
@@ -1642,7 +1627,7 @@ void updatebars(void) {
 				CopyFromParent, DefaultVisual(dpy, screen),
 				CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
         // 为窗口设置光标
-		XDefineCursor(dpy, m->barwin, cursor[CurNormal]->_cursor);
+		XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
         // 将窗口映射到显示中以显示状态栏
 		XMapRaised(dpy, m->barwin);
         // 使其他程序可以识别设置的窗口的类名和实例名，此处为dwm
@@ -1858,13 +1843,13 @@ void Dwm::SetUp(void) {
     // 创建绘图上下文
     drw = drw_create(dpy, screen, root, sw, sh);
     // 创建字体合集
-    if (drw_fontset_create(drw, fonts, fonts.size()).empty())
+    if (!drw_fontset_create(drw, fonts, fonts.size()))
         Die("no fonts could be loaded.");
 
     // 字体的高
-    lrpad = drw->fonts[0]->h;
+    lrpad = drw->fonts->h;
     // 边的高度(bar height),能够容纳字体
-    bh = drw->fonts[0]->h + 2;
+    bh = drw->fonts->h + 2;
 
     // 更新几何
     updategeom();
@@ -1901,17 +1886,11 @@ void Dwm::SetUp(void) {
 
     // 初始化鼠标
     // 普通鼠标
-  //  cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
+    cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
     // 调整窗口大小的鼠标
-    //cursor[CurResize] = drw_cur_create(drw, XC_sizing);
+    cursor[CurResize] = drw_cur_create(drw, XC_sizing);
     // 移动窗口的鼠标
-    //cursor[CurMove] = drw_cur_create(drw, XC_fleur);
-
-    cursor[CurNormal] = new Cur(drw,XC_left_ptr);
-    // 调整窗口大小的鼠标
-    cursor[CurResize] = new Cur(drw,XC_sizing);
-    // 移动窗口的鼠标
-    cursor[CurMove] = new Cur(drw,XC_fleur);
+    cursor[CurMove] = drw_cur_create(drw, XC_fleur);
 
     /* init appearance */
     // 初始化外观,(创建颜色集合)
@@ -1950,7 +1929,7 @@ void Dwm::SetUp(void) {
     //    设置光标为正常状态下的光标形状。
     //    设置事件掩码，以便根窗口能够监听并处理多种事件，包括窗口结构变化、鼠标按钮按下、鼠标指针移动、鼠标进入和离开窗口、窗口属性变化等。
     //    使用 XChangeWindowAttributes 函数和 XSelectInput 函数分别为根窗口设置事件属性和事件监听。
-    wa.cursor = cursor[CurNormal]->_cursor;
+    wa.cursor = cursor[CurNormal]->cursor;
     /*SubstructureRedirectMask：表示子窗口重定向事件，通常用于捕获窗口创建和销毁事件。
     SubstructureNotifyMask：表示子窗口通知事件，通常用于捕获子窗口的改变事件，如改变大小或移动。
     ButtonPressMask：表示鼠标按钮按下事件，用于捕获鼠标按键的点击事件。
@@ -1996,8 +1975,7 @@ void Dwm::CleanUp(void) {
         mons->cleanupmon();
     // 释放所有光标
     for (i = 0; i < CurLast; i++)
-        delete cursor[i];
-//        drw_cur_free(drw, cursor[i]);
+        drw_cur_free(drw, cursor[i]);
     // 释放所有颜色方案
     for (i = 0; i < LENGTH(colors); i++)
         free(scheme[i]);
@@ -2373,12 +2351,12 @@ configurerequest(XEvent *e)
                 c->h = ev->height;
             }
             if ((c->x + c->w) > m->mx + m->mw && c->isfloating)
-                c->x = m->mx + (m->mw / 2 - c->Width() / 2); /* center in x direction */
+                c->x = m->mx + (m->mw / 2 - WIDTH(c) / 2); /* center in x direction */
             if ((c->y + c->h) > m->my + m->mh && c->isfloating)
-                c->y = m->my + (m->mh / 2 - c->Height() / 2); /* center in y direction */
+                c->y = m->my + (m->mh / 2 - HEIGHT(c) / 2); /* center in y direction */
             if ((ev->value_mask & (CWX|CWY)) && !(ev->value_mask & (CWWidth|CWHeight)))
                 c->configure();
-            if (c->IsVisible())
+            if (ISVISIBLE(c))
                 XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
         } else
             c->configure();
