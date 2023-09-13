@@ -14,7 +14,6 @@
 #include "util.h"
 
 /* variables */
-// static const char broken[] = "broken";
 inline static std::string broken = "broken";
 static char stext[256];
 static int screen;

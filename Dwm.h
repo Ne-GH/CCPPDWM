@@ -162,7 +162,6 @@ static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatestatus(void);
 static void view(const Arg *arg);
-static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 
 
