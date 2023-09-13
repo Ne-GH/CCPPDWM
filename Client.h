@@ -17,9 +17,12 @@ struct Monitor;
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
+
+#include <string>
 // 保存窗口的各种属性和状态
 struct Client {
-    char name[256]; //窗口的名称或标题，最多可以包含 256 个字符。
+//    char name[256]; //窗口的名称或标题，最多可以包含 256 个字符。
+    std::string name;
     float mina, maxa;//窗口的最小和最大宽高比。
     int x, y, w, h;//窗口的位置和大小。x 和 y 表示窗口的左上角坐标，w 和 h 表示窗口的宽度和高度。
     int oldx, oldy, oldw, oldh;//窗口的旧位置和大小，用于跟踪窗口的变化。

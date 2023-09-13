@@ -14,7 +14,8 @@
 #include "util.h"
 
 /* variables */
-static const char broken[] = "broken";
+std::string broken = "broken";
+//static const char broken[] = "broken";
 static char stext[256];
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
@@ -252,11 +253,12 @@ void Client::configure() {
 *******************************************************************************/
 void Client::updatetitle() {
     // 从窗口的_NET_WM_NAME属性中获取窗口的名称并存储到c->name中
-    if (!gettextprop(win, netatom[NetWMName], name, sizeof name))
-        gettextprop(win, XA_WM_NAME, name, sizeof name);
+    if (!gettextprop(win, netatom[NetWMName], const_cast<char *>(name.c_str()), name.size()))
+        gettextprop(win, XA_WM_NAME, const_cast<char *>(name.c_str()), name.size());
     // 如果没有获取到窗口的名称,将窗口的名称设置为“broken”
-    if (name[0] == '\0') /* hack to mark broken clients,标记损坏的客户端 */
-        strcpy(name, broken);
+    if (name.empty()) { // 标记损坏的客户端
+        name = broken;
+    }
 }
 
 /*******************************************************************************
@@ -364,13 +366,13 @@ void Client::applyrules() {
     tags = 0;
     // 获取窗口的类别和实例信息，并存储在ch中
     XGetClassHint(dpy, win, &ch);
-    _class    = ch.res_class ? ch.res_class : broken;
-    instance = ch.res_name  ? ch.res_name  : broken;
+    _class    = ch.res_class ? ch.res_class : broken.c_str();
+    instance = ch.res_name  ? ch.res_name  : broken.c_str();
 
     for (int i = 0; i < LENGTH(rules); i++) {
         const Rule *r = &rules[i];
         // 如果规则标题为空或者窗口标题不等于规则标题
-        if ((!r->title || strstr(name, r->title))
+        if ((!r->title || name == std::string(r->title))
             // 如果规则的class为空，或者当前class和规则的calss不同
             && (!r->_class || strstr(_class, r->_class))
             // 如果规则的instance为空，或者当前instance和规则的instance不同
@@ -674,7 +676,7 @@ void Monitor::drawbar() {
     if ((w = ww - tw - x) > bh) {
         if (sel) {
             drw_setscheme(drw, scheme[this == selmon ? SchemeSel : SchemeNorm]);
-            drw_text(drw, x, 0, w, bh, lrpad / 2,sel->name, 0);
+            drw_text(drw, x, 0, w, bh, lrpad / 2,sel->name.c_str(), 0);
             if (sel->isfloating)
                 drw_rect(drw, x + boxs, boxs, boxw, boxw, sel->isfixed, 0);
         } else {
