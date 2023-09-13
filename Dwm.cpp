@@ -188,7 +188,10 @@ static const Button buttons[] = {
 
 
 /* tagging */
-static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+std::vector<std::string> tags = {
+        "1","2","3","4","5","6","7","8","9"
+};
+//static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 //#define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TAGMASK                 ((1 << 9) - 1)
 
@@ -660,10 +663,10 @@ void Monitor::drawbar() {
             urg |= c->tags;
     }
     x = 0;
-    for (i = 0; i < LENGTH(tags); i++) {
-        w = TEXTW(tags[i]);
+    for (i = 0; i < tags.size(); i++) {
+        w = TEXTW(tags[i].c_str());
         drw_setscheme(drw, scheme[tagset[seltags] & 1 << i ? SchemeSel : SchemeNorm]);
-        drw_text(drw, x, 0, w, bar_height, left_right_padding / 2, tags[i], urg & 1 << i);
+        drw_text(drw, x, 0, w, bar_height, left_right_padding / 2, tags[i].c_str(), urg & 1 << i);
         if (occ & 1 << i)
             drw_rect(drw, x + boxs, boxs, boxw, boxw,
                      this == selmon && selmon->sel && selmon->sel->tags & 1 << i,
@@ -2134,11 +2137,11 @@ void buttonpress(XEvent *e) {
         unsigned int i = 0,x = 0;
         // 判断点击区域
         do
-            x += TEXTW(tags[i]);
-        while (ev->x >= x && ++i < LENGTH(tags));
+            x += TEXTW(tags[i].c_str());
+        while (ev->x >= x && ++i < tags.size());
 
         // 如果点击的是tag
-        if (i < LENGTH(tags)) {
+        if (i < tags.size()) {
             click = ClkTagBar;
             arg.ui = 1 << i;
         }
