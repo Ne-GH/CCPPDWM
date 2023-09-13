@@ -63,7 +63,8 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
-static Cur *cursor[CurLast];
+//static Cur *cursor[CurLast];
+std::vector<Cur *>cursor;
 static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
@@ -1888,6 +1889,7 @@ void Dwm::SetUp(void) {
 
     // 初始化鼠标
     // 普通鼠标
+    cursor.resize(CurLast);
     cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
     // 调整窗口大小的鼠标
     cursor[CurResize] = drw_cur_create(drw, XC_sizing);
