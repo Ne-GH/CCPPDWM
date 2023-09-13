@@ -169,31 +169,34 @@ xfont_free(Fnt *font)
  * 参数3：字体数组的长度(字体数量)
  * 返回值字体合集是一个链表
 *******************************************************************************/
-Fnt* drw_fontset_create(Drw* drw, std::vector<std::string>fonts, size_t fontcount) {
+std::vector<Fnt*> drw_fontset_create(Drw* drw, std::vector<std::string>fonts, size_t font_count) {
     // 当前处理的字体，返回的字体集合
-	Fnt *cur, *ret = nullptr;
+	Fnt *cur = nullptr;
+    std::vector<Fnt *>ret;
 
 	if (!drw || !fonts.size())
-		return nullptr;
+		return std::vector<Fnt*>();
+    for (int i = 1;i <= font_count; ++i) {
+        if ((cur = xfont_create(drw,fonts[font_count-i], nullptr))) {
+            ret.push_back(cur);
+        }
+    }
 
-	for (int i = 1; i <= fontcount; i++) {
-        // 创建字体，参数为：绘图上下文，字体名称
-		if ((cur = xfont_create(drw, fonts[fontcount - i], NULL))) {
-			cur->next = ret;
-			ret = cur;
-		}
-	}
+//	for (int i = 1; i <= font_count; i++) {
+//        // 创建字体，参数为：绘图上下文，字体名称
+//		if ((cur = xfont_create(drw, fonts[font_count - i], NULL))) {
+//			cur->next = ret;
+//			ret = cur;
+//		}
+//	}
     drw->fonts = ret;
 	return ret;
 }
 
-void
-drw_fontset_free(Fnt *font)
-{
-	if (font) {
-		drw_fontset_free(font->next);
-		xfont_free(font);
-	}
+void drw_fontset_free(std::vector<Fnt *>font_set) {
+    for (auto font : font_set) {
+        xfont_free(font);
+    }
 }
 
 /*******************************************************************************
@@ -241,10 +244,10 @@ Clr* drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount) {
 }
 
 void
-drw_setfontset(Drw *drw, Fnt *set)
+drw_setfontset(Drw *drw, std::vector<Fnt *>font_set)
 {
 	if (drw)
-		drw->fonts = set;
+		drw->fonts = font_set;
 }
 
 void
@@ -286,7 +289,7 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 	static struct { long codepoint[nomatches_len]; unsigned int idx; } nomatches;
 	static unsigned int ellipsis_width = 0;
 
-	if (!drw || (render && (!drw->scheme || !w)) || !text || !drw->fonts)
+	if (!drw || (render && (!drw->scheme || !w)) || !text || drw->fonts.empty())
 		return 0;
 
 	if (!render) {
@@ -300,8 +303,7 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 		x += lpad;
 		w -= lpad;
 	}
-
-	usedfont = drw->fonts;
+	usedfont = drw->fonts[0];
 	if (!ellipsis_width && render)
 		ellipsis_width = drw_fontset_getwidth(drw, "...");
 	while (1) {
@@ -310,7 +312,7 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 		nextfont = NULL;
 		while (*text) {
 			utf8charlen = utf8decode(text, &utf8codepoint, UTF_SIZ);
-			for (curfont = drw->fonts; curfont; curfont = curfont->next) {
+			for (curfont = drw->fonts[0]; curfont; curfont = curfont->next) {
 				charexists = charexists || XftCharExists(drw->dpy, curfont->xfont, utf8codepoint);
 				if (charexists) {
 					drw_font_getexts(curfont, text, utf8charlen, &tmpw, NULL);
@@ -378,12 +380,12 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 			fccharset = FcCharSetCreate();
 			FcCharSetAddChar(fccharset, utf8codepoint);
 
-			if (!drw->fonts->pattern) {
+			if (!drw->fonts[0]->pattern) {
 				/* Refer to the comment in xfont_create for more information. */
 				die("the first font in the cache must be loaded from a font string.");
 			}
 
-			fcpattern = FcPatternDuplicate(drw->fonts->pattern);
+			fcpattern = FcPatternDuplicate(drw->fonts[0]->pattern);
 			FcPatternAddCharSet(fcpattern, FC_CHARSET, fccharset);
 			FcPatternAddBool(fcpattern, FC_SCALABLE, FcTrue);
 
@@ -397,14 +399,14 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 			if (match) {
 				usedfont = xfont_create(drw, NULL, match);
 				if (usedfont && XftCharExists(drw->dpy, usedfont->xfont, utf8codepoint)) {
-					for (curfont = drw->fonts; curfont->next; curfont = curfont->next)
+					for (curfont = drw->fonts[0]; curfont->next; curfont = curfont->next)
 						; /* NOP */
 					curfont->next = usedfont;
 				} else {
 					xfont_free(usedfont);
 					nomatches.codepoint[++nomatches.idx % nomatches_len] = utf8codepoint;
 no_match:
-					usedfont = drw->fonts;
+					usedfont = drw->fonts[0];
 				}
 			}
 		}
@@ -428,7 +430,7 @@ drw_map(Drw *drw, Window win, int x, int y, unsigned int w, unsigned int h)
 unsigned int
 drw_fontset_getwidth(Drw *drw, const char *text)
 {
-	if (!drw || !drw->fonts || !text)
+	if (!drw || drw->fonts.empty() || !text)
 		return 0;
 	return drw_text(drw, 0, 0, 0, 0, 0, text, 0);
 }
@@ -437,7 +439,7 @@ unsigned int
 drw_fontset_getwidth_clamp(Drw *drw, const char *text, unsigned int n)
 {
 	unsigned int tmp = 0;
-	if (drw && drw->fonts && text && n)
+	if (drw && drw->fonts.empty() && text && n)
 		tmp = drw_text(drw, 0, 0, 0, 0, 0, text, n);
 	return MIN(n, tmp);
 }

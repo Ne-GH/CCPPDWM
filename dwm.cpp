@@ -651,8 +651,8 @@ Monitor *Monitor::dirtomon(int dir) {
 *******************************************************************************/
 void Monitor::drawbar() {
     int x, w, tw = 0;
-    int boxs = drw->fonts->h / 9;
-    int boxw = drw->fonts->h / 6 + 2;
+    int boxs = drw->fonts[0]->h / 9;
+    int boxw = drw->fonts[0]->h / 6 + 2;
     unsigned int i, occ = 0, urg = 0;
     Client *c;
 
@@ -1858,13 +1858,13 @@ void Dwm::SetUp(void) {
     // 创建绘图上下文
     drw = drw_create(dpy, screen, root, sw, sh);
     // 创建字体合集
-    if (!drw_fontset_create(drw, fonts, fonts.size()))
+    if (drw_fontset_create(drw, fonts, fonts.size()).empty())
         Die("no fonts could be loaded.");
 
     // 字体的高
-    lrpad = drw->fonts->h;
+    lrpad = drw->fonts[0]->h;
     // 边的高度(bar height),能够容纳字体
-    bh = drw->fonts->h + 2;
+    bh = drw->fonts[0]->h + 2;
 
     // 更新几何
     updategeom();
