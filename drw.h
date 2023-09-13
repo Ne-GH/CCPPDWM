@@ -1,64 +1,50 @@
 /* See LICENSE file for copyright and license details. */
-// 颜色
-typedef XftColor Clr;
-struct Fnt;
 
-#include <vector>
-#include <string>
+typedef struct {
+	Cursor cursor;
+} Cur;
 
-// 绘图上下文
-struct Drw{
-    unsigned int w, h;
-    Display *dpy;
-    int screen;
-    Window root;
-    Drawable drawable;
-    GC gc;
-    Clr *scheme;
-    //Fnt *fonts;
-    std::vector<Fnt*>fonts;
-};
-/* Drawable abstraction */
-Drw *drw_create(Display *dpy, int screen, Window win, unsigned int w, unsigned int h);
-void drw_resize(Drw *drw, unsigned int w, unsigned int h);
-void drw_free(Drw *drw);
-
-
-
-// 鼠标
-struct Cur{
-	Cursor _cursor;
-    Display *_dpy;
-    /*******************************************************************************
-     * 创建鼠标
-     * 参数1：绘图上下文
-     * 参数2：形状
-    *******************************************************************************/
-    Cur(Drw* drw,int shape);
-    ~Cur();
-};
-
-// 字体
-struct Fnt {
+typedef struct Fnt {
 	Display *dpy;
 	unsigned int h;
 	XftFont *xfont;
 	FcPattern *pattern;
 	struct Fnt *next;
-};
+} Fnt;
+
+enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
+typedef XftColor Clr;
+
+typedef struct {
+	unsigned int w, h;
+	Display *dpy;
+	int screen;
+	Window root;
+	Drawable drawable;
+	GC gc;
+	Clr *scheme;
+	Fnt *fonts;
+} Drw;
+
+/* Drawable abstraction */
+Drw *drw_create(Display *dpy, int screen, Window win, unsigned int w, unsigned int h);
+void drw_resize(Drw *drw, unsigned int w, unsigned int h);
+void drw_free(Drw *drw);
+
 /* Fnt abstraction */
-std::vector<Fnt *>drw_fontset_create(Drw* drw, std::vector<std::string>fonts, size_t fontcount);
-void drw_fontset_free(std::vector<Fnt*> set);
+Fnt *drw_fontset_create(Drw* drw, const char *fonts[], size_t fontcount);
+void drw_fontset_free(Fnt* set);
 unsigned int drw_fontset_getwidth(Drw *drw, const char *text);
 unsigned int drw_fontset_getwidth_clamp(Drw *drw, const char *text, unsigned int n);
 void drw_font_getexts(Fnt *font, const char *text, unsigned int len, unsigned int *w, unsigned int *h);
 
-
-enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
 /* Colorscheme abstraction */
 void drw_clr_create(Drw *drw, Clr *dest, const char *clrname);
 Clr *drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount);
 
+/* Cursor abstraction */
+Cur *drw_cur_create(Drw *drw, int shape);
+void drw_cur_free(Drw *drw, Cur *cursor);
 
 /* Drawing context manipulation */
 void drw_setfontset(Drw *drw, Fnt *set);

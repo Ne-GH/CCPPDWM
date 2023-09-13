@@ -60,25 +60,18 @@ utf8decode(const char *c, long *u, size_t clen)
 	return len;
 }
 
-/*******************************************************************************
- * 创建绘图上下文
-*******************************************************************************/
-Drw* drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h) {
-	Drw *drw = (Drw *)ecalloc(1, sizeof(Drw));
+Drw *
+drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h)
+{
+	Drw *drw = (Drw*)ecalloc(1, sizeof(Drw));
+
 	drw->dpy = dpy;
 	drw->screen = screen;
 	drw->root = root;
 	drw->w = w;
 	drw->h = h;
-
-    // 创建与绘图上下文关联的像素图，用于绘制图形元素
 	drw->drawable = XCreatePixmap(dpy, root, w, h, DefaultDepth(dpy, screen));
-    // 创建图形上下文,GC包含图形操作的信息，例如线条样式和颜色
 	drw->gc = XCreateGC(dpy, root, 0, NULL);
-
-    // 设置图形上下文的线条属性，线宽、线条样式、端点、连接方式
-    // 参数分别为：
-    // 与X服务器的连接，图形上下文，线条的宽度（像素），线条的样式（实线），线条的端点（平直，不做特殊处理），线条的连接方式（尖角，两条直线连接是锐角）
 	XSetLineAttributes(dpy, drw->gc, 1, LineSolid, CapButt, JoinMiter);
 
 	return drw;
@@ -109,27 +102,25 @@ drw_free(Drw *drw)
 /* This function is an implementation detail. Library users should use
  * drw_fontset_create instead.
  */
-/*******************************************************************************
- * 创建一个Fnt
-*******************************************************************************/
-static Fnt * xfont_create(Drw *drw,std::string fontname, FcPattern *fontpattern) {
+static Fnt *
+xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern)
+{
 	Fnt *font;
 	XftFont *xfont = NULL;
 	FcPattern *pattern = NULL;
 
-
-	if (fontname != "") {
+	if (fontname) {
 		/* Using the pattern found at font->xfont->pattern does not yield the
 		 * same substitution results as using the pattern returned by
 		 * FcNameParse; using the latter results in the desired fallback
 		 * behaviour whereas the former just results in missing-character
 		 * rectangles being drawn, at least with some fonts. */
-		if (!(xfont = XftFontOpenName(drw->dpy, drw->screen, fontname.c_str()))) {
-			fprintf(stderr, "error, cannot load font from name: '%s'\n", fontname.c_str());
+		if (!(xfont = XftFontOpenName(drw->dpy, drw->screen, fontname))) {
+			fprintf(stderr, "error, cannot load font from name: '%s'\n", fontname);
 			return NULL;
 		}
-		if (!(pattern = FcNameParse((FcChar8 *) fontname.c_str()))) {
-			fprintf(stderr, "error, cannot parse font name to pattern: '%s'\n", fontname.c_str());
+		if (!(pattern = FcNameParse((FcChar8 *) fontname))) {
+			fprintf(stderr, "error, cannot parse font name to pattern: '%s'\n", fontname);
 			XftFontClose(drw->dpy, xfont);
 			return NULL;
 		}
@@ -142,7 +133,7 @@ static Fnt * xfont_create(Drw *drw,std::string fontname, FcPattern *fontpattern)
 		die("no font specified.");
 	}
 
-	font = (Fnt *)ecalloc(1, sizeof(Fnt));
+	font = (Fnt*)ecalloc(1, sizeof(Fnt));
 	font->xfont = xfont;
 	font->pattern = pattern;
 	font->h = xfont->ascent + xfont->descent;
@@ -162,85 +153,67 @@ xfont_free(Fnt *font)
 	free(font);
 }
 
-/*******************************************************************************
- * 创建字体合集
- * 参数1：绘图上下文
- * 参数2：字体数组
- * 参数3：字体数组的长度(字体数量)
- * 返回值字体合集是一个链表
-*******************************************************************************/
-std::vector<Fnt*> drw_fontset_create(Drw* drw, std::vector<std::string>fonts, size_t font_count) {
-    // 当前处理的字体，返回的字体集合
-	Fnt *cur = nullptr;
-    std::vector<Fnt *>ret;
+Fnt*
+drw_fontset_create(Drw* drw, const char *fonts[], size_t fontcount)
+{
+	Fnt *cur, *ret = NULL;
+	size_t i;
 
-	if (!drw || !fonts.size())
-		return std::vector<Fnt*>();
-    for (int i = 1;i <= font_count; ++i) {
-        if ((cur = xfont_create(drw,fonts[font_count-i], nullptr))) {
-            ret.push_back(cur);
-        }
-    }
+	if (!drw || !fonts)
+		return NULL;
 
-    drw->fonts = ret;
-	return ret;
+	for (i = 1; i <= fontcount; i++) {
+		if ((cur = xfont_create(drw, fonts[fontcount - i], NULL))) {
+			cur->next = ret;
+			ret = cur;
+		}
+	}
+	return (drw->fonts = ret);
 }
 
-void drw_fontset_free(std::vector<Fnt *>font_set) {
-    for (auto font : font_set) {
-        xfont_free(font);
-    }
+void
+drw_fontset_free(Fnt *font)
+{
+	if (font) {
+		drw_fontset_free(font->next);
+		xfont_free(font);
+	}
 }
 
-/*******************************************************************************
- * 根据颜色名称或者颜色编码创建颜色
- * 参数1：绘图上下文
- * 参数2：存储创建的颜色
- * 参数3：字符串，创建的颜色的名称或者16进制编码
-*******************************************************************************/
-void drw_clr_create(Drw *drw, Clr *dest, const char *clrname) {
+void
+drw_clr_create(Drw *drw, Clr *dest, const char *clrname)
+{
 	if (!drw || !dest || !clrname)
 		return;
-    // 创建颜色
-    // 参数：
-    // 与x服务器的连接
-    // 视觉信息,DefaultVisual(),获取默认的视觉信息
-    // 颜色映射,DefaultColormap()，获取默认的颜色映射
-    // 创建的颜色名称或者16进制编码
-    // 存储创建颜色的地址
+
 	if (!XftColorAllocName(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
 	                       DefaultColormap(drw->dpy, drw->screen),
 	                       clrname, dest))
-        Die("error, cannot allocate color " + std::string(clrname));
+		die("error, cannot allocate color '%s'", clrname);
 }
 
 /* Wrapper to create color schemes. The caller has to call free(3) on the
  * returned color scheme when done using it. */
-
-/*******************************************************************************
- * 创建颜色方案(集合)
- * 参数1：绘图上下文
- * 参数2：字符串数组，每个字符串都是颜色的16进制代码或名称
- * 参数3：颜色的数量
- * 返回：创建的颜色方案(集合)
-*******************************************************************************/
-Clr* drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount) {
+Clr *
+drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount)
+{
+	size_t i;
 	Clr *ret;
+
 	/* need at least two colors for a scheme */
-    // 一个方案至少需要两个颜色
-	if (!drw || !clrnames || clrcount < 2 || !(ret = (Clr *)ecalloc(clrcount, sizeof(Clr))))
+	if (!drw || !clrnames || clrcount < 2 || !(ret = (Clr *)ecalloc(clrcount, sizeof(XftColor))))
 		return NULL;
 
-	for (int i = 0; i < clrcount; i++)
+	for (i = 0; i < clrcount; i++)
 		drw_clr_create(drw, &ret[i], clrnames[i]);
 	return ret;
 }
 
 void
-drw_setfontset(Drw *drw, std::vector<Fnt *>font_set)
+drw_setfontset(Drw *drw, Fnt *set)
 {
 	if (drw)
-		drw->fonts = font_set;
+		drw->fonts = set;
 }
 
 void
@@ -282,7 +255,7 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 	static struct { long codepoint[nomatches_len]; unsigned int idx; } nomatches;
 	static unsigned int ellipsis_width = 0;
 
-	if (!drw || (render && (!drw->scheme || !w)) || !text || drw->fonts.empty())
+	if (!drw || (render && (!drw->scheme || !w)) || !text || !drw->fonts)
 		return 0;
 
 	if (!render) {
@@ -296,7 +269,8 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 		x += lpad;
 		w -= lpad;
 	}
-	usedfont = drw->fonts[0];
+
+	usedfont = drw->fonts;
 	if (!ellipsis_width && render)
 		ellipsis_width = drw_fontset_getwidth(drw, "...");
 	while (1) {
@@ -305,7 +279,7 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 		nextfont = NULL;
 		while (*text) {
 			utf8charlen = utf8decode(text, &utf8codepoint, UTF_SIZ);
-			for (curfont = drw->fonts[0]; curfont; curfont = curfont->next) {
+			for (curfont = drw->fonts; curfont; curfont = curfont->next) {
 				charexists = charexists || XftCharExists(drw->dpy, curfont->xfont, utf8codepoint);
 				if (charexists) {
 					drw_font_getexts(curfont, text, utf8charlen, &tmpw, NULL);
@@ -373,12 +347,12 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 			fccharset = FcCharSetCreate();
 			FcCharSetAddChar(fccharset, utf8codepoint);
 
-			if (!drw->fonts[0]->pattern) {
+			if (!drw->fonts->pattern) {
 				/* Refer to the comment in xfont_create for more information. */
 				die("the first font in the cache must be loaded from a font string.");
 			}
 
-			fcpattern = FcPatternDuplicate(drw->fonts[0]->pattern);
+			fcpattern = FcPatternDuplicate(drw->fonts->pattern);
 			FcPatternAddCharSet(fcpattern, FC_CHARSET, fccharset);
 			FcPatternAddBool(fcpattern, FC_SCALABLE, FcTrue);
 
@@ -392,14 +366,14 @@ drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lp
 			if (match) {
 				usedfont = xfont_create(drw, NULL, match);
 				if (usedfont && XftCharExists(drw->dpy, usedfont->xfont, utf8codepoint)) {
-					for (curfont = drw->fonts[0]; curfont->next; curfont = curfont->next)
+					for (curfont = drw->fonts; curfont->next; curfont = curfont->next)
 						; /* NOP */
 					curfont->next = usedfont;
 				} else {
 					xfont_free(usedfont);
 					nomatches.codepoint[++nomatches.idx % nomatches_len] = utf8codepoint;
 no_match:
-					usedfont = drw->fonts[0];
+					usedfont = drw->fonts;
 				}
 			}
 		}
@@ -423,7 +397,7 @@ drw_map(Drw *drw, Window win, int x, int y, unsigned int w, unsigned int h)
 unsigned int
 drw_fontset_getwidth(Drw *drw, const char *text)
 {
-	if (!drw || drw->fonts.empty() || !text)
+	if (!drw || !drw->fonts || !text)
 		return 0;
 	return drw_text(drw, 0, 0, 0, 0, 0, text, 0);
 }
@@ -432,7 +406,7 @@ unsigned int
 drw_fontset_getwidth_clamp(Drw *drw, const char *text, unsigned int n)
 {
 	unsigned int tmp = 0;
-	if (drw && drw->fonts.empty() && text && n)
+	if (drw && drw->fonts && text && n)
 		tmp = drw_text(drw, 0, 0, 0, 0, 0, text, n);
 	return MIN(n, tmp);
 }
@@ -452,14 +426,25 @@ drw_font_getexts(Fnt *font, const char *text, unsigned int len, unsigned int *w,
 		*h = font->h;
 }
 
+Cur *
+drw_cur_create(Drw *drw, int shape)
+{
+	Cur *cur;
 
-Cur::Cur(Drw *drw, int shape) {
-    _cursor = XCreateFontCursor(drw->dpy,shape);
-    _dpy = drw->dpy;
+	if (!drw || !(cur = (Cur*)ecalloc(1, sizeof(Cur))))
+		return NULL;
 
+	cur->cursor = XCreateFontCursor(drw->dpy, shape);
+
+	return cur;
 }
-Cur::~Cur() {
-    if (!_cursor)
-        return;
-    XFreeCursor(_dpy,_cursor);
+
+void
+drw_cur_free(Drw *drw, Cur *cursor)
+{
+	if (!cursor)
+		return;
+
+	XFreeCursor(drw->dpy, cursor->cursor);
+	free(cursor);
 }
