@@ -10,7 +10,7 @@
 #include "Dwm.h"
 #include "Client.h"
 #include "Monitor.h"
-#include "drw.h"
+#include "Drw.h"
 #include "util.h"
 
 /* variables */

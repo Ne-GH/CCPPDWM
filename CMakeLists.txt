@@ -9,12 +9,12 @@ include_directories(Dwm Monitor Client Drw Fnt Cur .)
 
 
 add_executable(${PROJECT_NAME}
-        drw.h
-        drw.cpp
+        Drw.h
+        Drw.cpp
         util.h
         util.cpp
         Dwm.h
-        dwm.cpp
+        Dwm.cpp
         Client.h
         Client.cpp
         Monitor.h
