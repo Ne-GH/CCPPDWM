@@ -351,10 +351,7 @@ void Client::updatesizehints() {
     hintsvalid = 1;
 }
 
-void Client::attachstack() {
-    snext = mon->stack;
-    mon->stack = this;
-}
+
 
 /*******************************************************************************
  * 根据窗口规则设置窗口的属性

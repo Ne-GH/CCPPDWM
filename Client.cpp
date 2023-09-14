@@ -30,3 +30,7 @@ void Client::detachstack() {
         mon->sel = t;
     }
 }
+void Client::attachstack() {
+    snext = mon->stack;
+    mon->stack = this;
+}
