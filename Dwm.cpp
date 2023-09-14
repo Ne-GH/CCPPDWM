@@ -16,7 +16,8 @@
 /* variables */
 std::string broken = "broken";
 //static const char broken[] = "broken";
-static char stext[256];
+std::string stext(256,'\0');
+//static char stext[256];
 static int screen;
 static int screen_width, screen_height;           /* X display screen geometry width, height */
 static int bar_height;               /* bar height */
@@ -641,8 +642,8 @@ void Monitor::drawbar() {
     /* draw status first so it can be overdrawn by tags later */
     if (this == selmon) { /* status is only drawn on selected monitor */
         drw_setscheme(drw, scheme[SchemeNorm]);
-        tw = TEXTW(stext) - left_right_padding + 2; /* 2px right padding */
-        drw_text(drw, ww - tw, 0, tw, bar_height, 0, stext, 0);
+        tw = TEXTW(stext.c_str()) - left_right_padding + 2; /* 2px right padding */
+        drw_text(drw, ww - tw, 0, tw, bar_height, 0, stext.c_str(), 0);
     }
 
     for (c = clients; c; c = c->next) {
@@ -1760,9 +1761,10 @@ updatenumlockmask(void)
 *******************************************************************************/
 void updatestatus(void) {
     // 获取root窗口的属性值，将结果存在stext数组中，属性XA_WM_NAME为窗口的名称或者标题
-    if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
+    if (!gettextprop(root, XA_WM_NAME, const_cast<char *>(stext.c_str()), stext.size()))
         // 获取成功时使用获取的文本，获取失败默认使用dwm-VERSION
-        strcpy(stext, "dwm-" VERSION);
+        stext = "dwm" VERSION;
+//        strcpy(stext.c_str(), "dwm-" VERSION);
     // 传递当前选中的监视器，以便重新绘制状态栏，以显示更新后的文本
     selmon->drawbar();
 }
@@ -2138,7 +2140,7 @@ void buttonpress(XEvent *e) {
         else if (ev->x < x + TEXTW(selmon->ltsymbol))
             click = ClkLtSymbol;
             // 如果点击的是状态栏文本
-        else if (ev->x > selmon->ww - (int)TEXTW(stext))
+        else if (ev->x > selmon->ww - (int)TEXTW(stext.c_str()))
             click = ClkStatusText;
             // 如果点击的是窗口标题区域
         else
