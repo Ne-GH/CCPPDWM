@@ -93,16 +93,19 @@ static const char *colors[][3]      = {
         [SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
 };
 
-
-static const Rule rules[] = {
-        /* xprop(1):
-         *	WM_CLASS(STRING) = instance, class
-         *	WM_NAME(STRING) = title
-         */
-        /* class      instance    title       tags mask     isfloating   monitor */
+std::vector<Rule> rules {
         { "Gimp",     NULL,       NULL,       0,            1,           -1 },
         { "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
 };
+//static const Rule rules[] = {
+//        /* xprop(1):
+//         *	WM_CLASS(STRING) = instance, class
+//         *	WM_NAME(STRING) = title
+//         */
+//        /* class      instance    title       tags mask     isfloating   monitor */
+//        { "Gimp",     NULL,       NULL,       0,            1,           -1 },
+//        { "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
+//};
 
 /* layout(s) */
 static const float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
@@ -371,7 +374,7 @@ void Client::applyrules() {
     _class    = ch.res_class ? ch.res_class : broken.c_str();
     instance = ch.res_name  ? ch.res_name  : broken.c_str();
 
-    for (int i = 0; i < LENGTH(rules); i++) {
+    for (int i = 0; i < rules.size(); i++) {
         const Rule *r = &rules[i];
         // 如果规则标题为空或者窗口标题不等于规则标题
         if ((!r->title || name == std::string(r->title))
