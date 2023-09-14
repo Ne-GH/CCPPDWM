@@ -1881,11 +1881,11 @@ void Dwm::SetUp(void) {
     // 初始化鼠标
     // 普通鼠标
     cursor.resize(CurLast);
-    cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
+    cursor[CurNormal] = new Cur(drw,XC_left_ptr);;
     // 调整窗口大小的鼠标
-    cursor[CurResize] = drw_cur_create(drw, XC_sizing);
+    cursor[CurResize] = new Cur(drw,XC_sizing);
     // 移动窗口的鼠标
-    cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+    cursor[CurMove] = new Cur(drw,XC_fleur);
 
     /* init appearance */
     // 初始化外观,(创建颜色集合)
@@ -1970,7 +1970,8 @@ void Dwm::CleanUp(void) {
         mons->cleanupmon();
     // 释放所有光标
     for (i = 0; i < CurLast; i++)
-        drw_cur_free(drw, cursor[i]);
+        delete cursor[i];
+//        drw_cur_free(drw, cursor[i]);
     // 释放所有颜色方案
     for (i = 0; i < LENGTH(colors); i++)
         free(scheme[i]);

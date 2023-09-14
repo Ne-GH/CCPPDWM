@@ -26,11 +26,12 @@ void drw_free(Drw *drw);
 
 // 鼠标
 struct Cur{
+    Display *_dpy;
 	Cursor cursor;
+    Cur(Drw *drw,int shape);
+    ~Cur();
 };
 /* Cursor abstraction */
-Cur *drw_cur_create(Drw *drw, int shape);
-void drw_cur_free(Drw *drw, Cur *cursor);
 
 // 字体
 struct Fnt {

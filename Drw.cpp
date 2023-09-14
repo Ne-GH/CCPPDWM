@@ -479,3 +479,14 @@ drw_cur_free(Drw *drw, Cur *cursor)
 	XFreeCursor(drw->dpy, cursor->cursor);
 	free(cursor);
 }
+
+Cur::Cur(Drw *drw, int shape) {
+    cursor = XCreateFontCursor(drw->dpy, shape);
+    _dpy = drw->dpy;
+}
+
+Cur::~Cur() {
+    if (!cursor)
+        return;
+    XFreeCursor(_dpy, cursor);
+}
